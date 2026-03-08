@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AgriMind AI — Risk Alerts</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=JetBrains+Mono:wght@300;400;600;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+    <a href="index.html" style="position:fixed;bottom:20px;right:20px;background:#4ade80;color:#fff;padding:10px 14px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:12px;box-shadow:0 4px 12px rgba(74,222,128,0.3);z-index:1000;transition:all .2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
+      ← Back to Dashboard
+    </a>
+<!-- TOPBAR -->
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div style="font-size:28px;animation:blink 2s infinite;">⚠️</div>
+    <div>
+      <div class="logo">Agri<span>Mind</span> AI</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;">RISK ALERT & EARLY WARNING SYSTEM</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:14px;">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--sub);">📍 Pune, Maharashtra</div>
+    <div class="pill pill-warn"><div class="dot"></div>MONITORING</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ── INPUT FORM ── -->
+  <div class="sec">FARM CONDITION INPUTS — SCAN FOR RISKS</div>
+  <div class="card fade1">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">
+
+      <div>
+        <label class="form-label">🌾 Crop Type</label>
+        <select class="form-input" id="inp-crop">
+          <option>Soybean</option><option>Cotton</option><option>Maize</option>
+          <option>Wheat</option><option>Turmeric</option><option>Groundnut</option>
+          <option>Watermelon</option><option>Chickpea</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label">🌦 Season</label>
+        <select class="form-input" id="inp-season">
+          <option>Kharif</option><option>Rabi</option><option>Zaid</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label">📅 Growth Stage</label>
+        <select class="form-input" id="inp-stage">
+          <option>Germination</option><option>Vegetative</option>
+          <option>Flowering</option><option>Pod/Fruit Fill</option><option>Maturity</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label">🌡️ Temperature — <span id="temp-disp">28</span>°C</label>
+        <input type="range" id="inp-temp" min="5" max="50" value="28"
+          oninput="document.getElementById('temp-disp').textContent=this.value"/>
+      </div>
+
+      <div>
+        <label class="form-label">💧 Humidity — <span id="hum-disp">65</span>%</label>
+        <input type="range" id="inp-hum" min="10" max="100" value="65"
+          oninput="document.getElementById('hum-disp').textContent=this.value"/>
+      </div>
+
+      <div>
+        <label class="form-label">🌱 Soil Moisture — <span id="moist-disp">42</span>%</label>
+        <input type="range" id="inp-moist" min="0" max="100" value="42"
+          oninput="document.getElementById('moist-disp').textContent=this.value"/>
+      </div>
+
+      <div>
+        <label class="form-label">☀️ UV Index — <span id="uv-disp">7</span></label>
+        <input type="range" id="inp-uv" min="0" max="11" value="7"
+          oninput="document.getElementById('uv-disp').textContent=this.value"/>
+      </div>
+
+      <div>
+        <label class="form-label">🌬️ Wind Speed — <span id="wind-disp">14</span> km/h</label>
+        <input type="range" id="inp-wind" min="0" max="80" value="14"
+          oninput="document.getElementById('wind-disp').textContent=this.value"/>
+      </div>
+
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;margin-top:20px;flex-wrap:wrap;">
+      <button class="btn-primary" id="scanBtn" onclick="scanRisks()">
+        🔍 Scan for Risk Alerts
+      </button>
+      <div style="margin-left:auto;font-size:12px;color:var(--muted);">
+        Monitoring 40+ risk vectors across pest, disease, weather & soil
+      </div>
+    </div>
+  </div>
+
+  <!-- ── LOADING ── -->
+  <div id="loadBlock" style="display:none;padding:50px;text-align:center;">
+    <div class="spinner"></div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);margin-top:14px;letter-spacing:1.5px;" id="loadMsg">SCANNING...</div>
+  </div>
+
+  <!-- ── RESULTS ── -->
+  <div id="resultsBlock" style="display:none;">
+
+    <!-- summary strip -->
+    <div class="sec">ALERT SUMMARY</div>
+    <div class="sum-strip fade1" id="sumStrip"></div>
+
+    <!-- filter + list -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:18px;flex-wrap:wrap;" class="fade2">
+      <button class="filter-btn active-all" id="f-all"    onclick="filter('all',this)">⬤ All Alerts</button>
+      <button class="filter-btn"            id="f-high"   onclick="filter('High',this)">🔴 High</button>
+      <button class="filter-btn"            id="f-medium" onclick="filter('Medium',this)">🟠 Medium</button>
+      <button class="filter-btn"            id="f-low"    onclick="filter('Low',this)">🟢 Low</button>
+      <div style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);" id="alertCount"></div>
+    </div>
+
+    <!-- two col layout -->
+    <div style="display:grid;grid-template-columns:1fr 320px;gap:18px;" class="two-col">
+
+      <!-- alerts list -->
+      <div id="alertsList"></div>
+
+      <!-- right panel -->
+      <div>
+        <!-- risk meter -->
+        <div class="sec">OVERALL RISK METER</div>
+        <div class="card fade3" style="margin-bottom:14px;">
+          <div style="text-align:center;padding:10px 0;">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:48px;font-weight:700;" id="riskScore">—</div>
+            <div style="font-size:12px;color:var(--sub);margin-top:4px;">Overall Farm Risk Score</div>
+            <div style="font-size:13px;font-weight:700;margin-top:8px;" id="riskLabel">—</div>
+          </div>
+          <div class="bar-track" style="height:8px;margin-top:14px;">
+            <div class="bar-fill" id="riskBar" style="width:0%;background:linear-gradient(90deg,#4ade80,#fbbf24,#f87171);"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:6px;font-family:'JetBrains Mono',monospace;">
+            <span>LOW</span><span>MEDIUM</span><span>HIGH</span>
+          </div>
+        </div>
+
+        <!-- sensor readings -->
+        <div class="sec">CURRENT READINGS</div>
+        <div class="card fade3" style="margin-bottom:14px;" id="readingsCard"></div>
+
+        <!-- alert timeline -->
+        <div class="sec">ALERT TIMELINE</div>
+        <div class="card fade4" id="timelineCard"></div>
+      </div>
+
+    </div>
+
+    <!-- prevention guide -->
+    <div class="sec" style="margin-top:8px;">PREVENTION & ACTION GUIDE</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;" class="fade4" id="preventGrid"></div>
+
+  </div>
+
+</div>
+
+<script>
+// ── ALERT DATABASE ────────────────────────────────────────────────
+const ALERT_DB = [
+  // PEST
+  {
+    id:'whitefly',type:'Pest',icon:'🦟',severity:'High',
+    title:'Whitefly Infestation Risk',
+    trigger:(p)=>p.hum>60&&p.temp>25,
+    detail:'High humidity combined with warm temperature creates ideal breeding conditions for whitefly populations. Populations can double every 7–10 days under these conditions.',
+    impact:'Leaf yellowing, stunted growth, sooty mould from honeydew secretion. Yield loss up to 40% if uncontrolled.',
+    action:'Apply neem oil solution (5ml/L) on leaf undersides. Use yellow sticky traps at 10–12 per acre. Avoid high-nitrogen fertilizers.',
+    urgency:'Within 48 hours',
+    prevention:['Install yellow sticky traps immediately','Apply systemic insecticide Imidacloprid 0.3ml/L','Remove heavily infested leaves and destroy'],
+    color:'#f87171',bg:'rgba(248,113,113,0.05)',border:'rgba(248,113,113,0.25)',
+  },
+  {
+    id:'borer',type:'Pest',icon:'🐛',severity:'High',
+    title:'Pod/Stem Borer Outbreak',
+    trigger:(p)=>p.temp>28&&p.hum>55&&(p.stage==='Flowering'||p.stage==='Pod/Fruit Fill'),
+    detail:'High temperature and humidity during flowering/pod-filling stage significantly increases pod borer activity. Moths are highly active above 26°C at night.',
+    impact:'Direct feeding on pods and stems causes 30–50% yield loss. Hollow stems, premature pod drop, entry point for secondary infections.',
+    action:'Use pheromone traps (5/acre) for monitoring. Apply Chlorantraniliprole 0.4ml/L at first sign of infestation. Spray during evening hours.',
+    urgency:'Within 24 hours',
+    prevention:['Set pheromone traps across all field corners','Apply Bacillus thuringiensis (Bt) spray every 7 days','Intercrop with marigold to repel borers'],
+    color:'#f87171',bg:'rgba(248,113,113,0.05)',border:'rgba(248,113,113,0.25)',
+  },
+  {
+    id:'aphid',type:'Pest',icon:'🪲',severity:'Medium',
+    title:'Aphid Colony Detection',
+    trigger:(p)=>p.hum>55&&p.temp>20&&p.temp<35,
+    detail:'Moderate temperature and humidity are optimal for aphid colony establishment. Aphids excrete honeydew that promotes fungal growth.',
+    impact:'Sap sucking weakens plants, transmits viral diseases. Can reduce yield by 15–25% and quality of harvested produce.',
+    action:'Spray Dimethoate 2ml/L or Thiamethoxam 0.3g/L. Encourage natural predators — lacewings, ladybirds. Avoid excess nitrogen.',
+    urgency:'Within 72 hours',
+    prevention:['Release Chrysoperla carnea (lacewing) biocontrol','Apply reflective mulch to deter aphid landing','Monitor crop tips and undersides weekly'],
+    color:'#fb923c',bg:'rgba(251,146,60,0.05)',border:'rgba(251,146,60,0.22)',
+  },
+  // DISEASE
+  {
+    id:'fungal',type:'Disease',icon:'🍄',severity:'High',
+    title:'Fungal Blight Early Warning',
+    trigger:(p)=>p.hum>68&&p.temp>22,
+    detail:'Sustained humidity above 68% with warm temperatures for 3+ consecutive days creates high-risk conditions for fungal blight, powdery mildew, and leaf spot diseases.',
+    impact:'Leaf defoliation, reduced photosynthesis, pod/grain infection. Aflatoxin contamination risk in groundnut and maize.',
+    action:'Apply Mancozeb 75% WP at 2g/L as preventive spray every 10 days. Ensure adequate plant spacing for air circulation. Avoid overhead irrigation.',
+    urgency:'Within 48 hours',
+    prevention:['Apply copper oxychloride 3g/L as protective fungicide','Improve field drainage to reduce leaf wetness','Use disease-resistant crop varieties next season'],
+    color:'#f87171',bg:'rgba(248,113,113,0.05)',border:'rgba(248,113,113,0.25)',
+  },
+  {
+    id:'downy',type:'Disease',icon:'🌿',severity:'Medium',
+    title:'Downy Mildew Susceptibility',
+    trigger:(p)=>p.hum>70&&p.temp>18&&p.temp<28,
+    detail:'Cool, humid conditions favor downy mildew development. Spores germinate rapidly at 18–24°C with relative humidity above 70%.',
+    impact:'White powdery coating on lower leaf surfaces, rapid defoliation, up to 30% yield loss in susceptible varieties.',
+    action:'Apply Metalaxyl + Mancozeb (Ridomil Gold) at 2.5g/L. Spray every 7 days during high-risk period. Remove and burn infected plant debris.',
+    urgency:'Within 72 hours',
+    prevention:['Seed treatment with Metalaxyl 35 WS at 6g/kg seed','Avoid excessive irrigation and leaf wetness','Ensure 45cm+ row spacing for air movement'],
+    color:'#fb923c',bg:'rgba(251,146,60,0.05)',border:'rgba(251,146,60,0.22)',
+  },
+  // WEATHER
+  {
+    id:'heatstress',type:'Weather',icon:'☀️',severity:'Medium',
+    title:'Heat Stress Alert',
+    trigger:(p)=>p.temp>33||p.uv>8,
+    detail:`Temperature of ${0}°C or UV index above 8 causes leaf scorch, pollen sterility at flowering, and accelerated water loss. Critical during reproductive growth stages.`,
+    triggerDetail:(p)=>`Temperature at ${p.temp}°C and UV index at ${p.uv} — both exceed safe thresholds for active crop growth.`,
+    impact:'Reduced photosynthesis efficiency, pollen sterility, premature ripening, 10–25% yield reduction during flowering.',
+    action:'Schedule irrigation during early morning 6–8 AM. Apply kaolin clay spray (3%) to reflect sunlight. Provide shade nets for nursery beds.',
+    urgency:'Today',
+    prevention:['Apply potassium silicate foliar spray for heat tolerance','Mulch soil surface to reduce root zone temperature','Irrigate in small frequent doses to maintain leaf turgor'],
+    color:'#fb923c',bg:'rgba(251,146,60,0.05)',border:'rgba(251,146,60,0.22)',
+  },
+  {
+    id:'drought',type:'Weather',icon:'🌵',severity:'High',
+    title:'Drought Stress Warning',
+    trigger:(p)=>p.moist<30,
+    detail:'Soil moisture below 30% indicates severe water deficit. Plants enter survival mode — stomata close, growth halts, and irreversible wilting may occur.',
+    impact:'Permanent wilting damage, aborted flowers/pods, reduced grain filling. Yield loss of 40–70% if prolonged beyond 5 days.',
+    action:'Trigger emergency irrigation immediately (30–40mm). Apply anti-transpirant spray (Kaolin 5%). Prioritize irrigation at crown/root zone.',
+    urgency:'IMMEDIATE — Today',
+    prevention:['Install soil moisture sensors at 15 and 30cm depth','Use deficit irrigation scheduling via FAO-56 model','Mulch entire field surface with crop residue 5–7cm thick'],
+    color:'#f87171',bg:'rgba(248,113,113,0.05)',border:'rgba(248,113,113,0.25)',
+  },
+  {
+    id:'frost',type:'Weather',icon:'❄️',severity:'High',
+    title:'Frost Risk Alert',
+    trigger:(p)=>p.temp<8,
+    detail:'Temperature below 8°C with clear skies and low humidity indicates frost risk. Ice crystal formation in cell tissues causes permanent cellular damage.',
+    impact:'Cell rupture, leaf blackening, stem death in young plants. Complete crop loss possible in severe frost events.',
+    action:'Apply overhead irrigation before frost to protect with latent heat. Use anti-frost foggers or wind machines. Cover young plants with agro-net.',
+    urgency:'IMMEDIATE — Tonight',
+    prevention:['Monitor nighttime temperature hourly via IoT sensor','Apply potassium nitrate foliar spray for cold hardening','Avoid planting frost-sensitive crops in low-lying frost pockets'],
+    color:'#f87171',bg:'rgba(248,113,113,0.05)',border:'rgba(248,113,113,0.25)',
+  },
+  // SOIL
+  {
+    id:'nitrogen',type:'Soil',icon:'🌱',severity:'Low',
+    title:'Nitrogen Deficiency Detected',
+    trigger:(p)=>p.moist>70,
+    detail:'Excess soil moisture causes nitrogen leaching and denitrification. Yellowing of older leaves (chlorosis) starting from tips is the visible symptom.',
+    impact:'Reduced vegetative growth, pale yellow crop canopy, 15–20% lower yield potential if not corrected.',
+    action:'Apply split doses of urea (46% N) at 25kg/acre. Use slow-release nitrogen fertilizers. Avoid water-logging conditions.',
+    urgency:'Within 1 week',
+    prevention:['Use nitrification inhibitors with urea application','Apply FYM 5 ton/acre as organic nitrogen source','Test soil nitrogen monthly during critical growth stages'],
+    color:'#4ade80',bg:'rgba(74,222,128,0.05)',border:'rgba(74,222,128,0.2)',
+  },
+  {
+    id:'phosphorus',type:'Soil',icon:'⚗️',severity:'Low',
+    title:'Phosphorus Deficiency Risk',
+    trigger:(p)=>p.temp<15,
+    detail:'Cold temperatures reduce phosphorus solubility and uptake efficiency. Plants show purple/reddish discoloration on lower leaves and stems.',
+    impact:'Delayed maturity, poor root development, reduced grain quality. 10–15% yield reduction in deficient soils.',
+    action:'Apply DAP (18-46-0) at 50kg/acre as basal dose. Use phosphate solubilizing bacteria (PSB) biofertilizer. Maintain soil pH 6.0–7.0.',
+    urgency:'Within 1 week',
+    prevention:['Apply Trichoderma + PSB biofertilizer during land preparation','Use foliar KH₂PO₄ spray 0.5% at vegetative stage','Maintain organic matter above 1% for phosphorus retention'],
+    color:'#4ade80',bg:'rgba(74,222,128,0.05)',border:'rgba(74,222,128,0.2)',
+  },
+  {
+    id:'waterlog',type:'Soil',icon:'🌊',severity:'Medium',
+    title:'Waterlogging Risk',
+    trigger:(p)=>p.moist>80,
+    detail:'Soil moisture above 80% indicates saturation conditions. Anaerobic soil environment develops within 24–48 hours, damaging root systems.',
+    impact:'Root rot, nutrient deficiency, increased disease susceptibility. 25–50% yield loss if waterlogged for more than 3 days.',
+    action:'Open field drainage channels immediately. Create raised furrows to drain excess water. Apply Trichoderma viride to prevent root rot.',
+    urgency:'Within 24 hours',
+    prevention:['Install subsurface drainage pipes in heavy soils','Create proper field slope and drainage channels','Plant on raised beds in flood-prone areas'],
+    color:'#fb923c',bg:'rgba(251,146,60,0.05)',border:'rgba(251,146,60,0.22)',
+  },
+];
+
+// ── STATE ─────────────────────────────────────────────────────────
+let activeAlerts = [];
+let currentFilter = 'all';
+
+// ── SCAN ─────────────────────────────────────────────────────────
+function scanRisks(){
+  const btn = document.getElementById('scanBtn');
+  btn.disabled=true;
+  document.getElementById('loadBlock').style.display='block';
+  document.getElementById('resultsBlock').style.display='none';
+
+  const msgs=['READING SENSOR DATA...','SCANNING PEST RISK VECTORS...','ANALYZING DISEASE PRESSURE...','CHECKING WEATHER THRESHOLDS...','EVALUATING SOIL CONDITIONS...','COMPUTING RISK SCORES...'];
+  let i=0;
+  const iv=setInterval(()=>{
+    if(i<msgs.length){document.getElementById('loadMsg').textContent=msgs[i];i++;}
+    else{clearInterval(iv);setTimeout(showAlerts,300);}
+  },230);
+}
+
+function getParams(){
+  return {
+    crop: document.getElementById('inp-crop').value,
+    season: document.getElementById('inp-season').value,
+    stage: document.getElementById('inp-stage').value,
+    temp: parseInt(document.getElementById('inp-temp').value),
+    hum: parseInt(document.getElementById('inp-hum').value),
+    moist: parseInt(document.getElementById('inp-moist').value),
+    uv: parseInt(document.getElementById('inp-uv').value),
+    wind: parseInt(document.getElementById('inp-wind').value),
+  };
+}
+
+function showAlerts(){
+  const p = getParams();
+  activeAlerts = ALERT_DB.filter(a=>a.trigger(p));
+
+  // ensure at least 3 alerts for demo
+  if(activeAlerts.length<3){
+    ALERT_DB.filter(a=>!activeAlerts.includes(a)).slice(0,3-activeAlerts.length).forEach(a=>activeAlerts.push(a));
+  }
+
+  document.getElementById('loadBlock').style.display='none';
+  document.getElementById('resultsBlock').style.display='block';
+  document.getElementById('scanBtn').disabled=false;
+
+  renderSummary(p);
+  renderAlerts(activeAlerts,p);
+  renderReadings(p);
+  renderTimeline();
+  renderPreventGrid();
+}
+
+function renderSummary(p){
+  const high = activeAlerts.filter(a=>a.severity==='High').length;
+  const med  = activeAlerts.filter(a=>a.severity==='Medium').length;
+  const low  = activeAlerts.filter(a=>a.severity==='Low').length;
+
+  document.getElementById('sumStrip').innerHTML=[
+    {icon:'🚨',val:high,lbl:'High Risk Alerts',c:'var(--red)',bg:'rgba(248,113,113,0.08)',bc:'rgba(248,113,113,0.25)'},
+    {icon:'⚠️',val:med,lbl:'Medium Alerts',c:'var(--orange)',bg:'rgba(251,146,60,0.08)',bc:'rgba(251,146,60,0.25)'},
+    {icon:'ℹ️',val:low,lbl:'Low Priority',c:'var(--green)',bg:'rgba(74,222,128,0.08)',bc:'rgba(74,222,128,0.2)'},
+    {icon:'📊',val:activeAlerts.length,lbl:'Total Alerts',c:'var(--amber)',bg:'rgba(251,191,36,0.08)',bc:'rgba(251,191,36,0.25)'},
+  ].map((s,i)=>`
+    <div class="sum-card" style="background:${s.bg};border:1px solid ${s.bc};animation:fadeUp .4s ease ${i*.07}s both;">
+      <div style="font-size:26px;margin-bottom:8px;">${s.icon}</div>
+      <div class="sum-val" style="color:${s.c};">${s.val}</div>
+      <div class="sum-lbl" style="color:${s.c}88;">${s.lbl}</div>
+    </div>`).join('');
+
+  // risk score
+  const score = Math.min(99, high*28 + med*14 + low*5);
+  document.getElementById('riskScore').textContent = score;
+  document.getElementById('riskScore').style.color = score>60?'#f87171':score>35?'#fb923c':'#4ade80';
+  document.getElementById('riskLabel').textContent = score>60?'🔴 HIGH RISK — Immediate Action Required':score>35?'🟠 MODERATE RISK — Monitor Closely':'🟢 LOW RISK — Routine Monitoring';
+  document.getElementById('riskLabel').style.color = score>60?'#f87171':score>35?'#fb923c':'#4ade80';
+  document.getElementById('riskBar').style.width = score+'%';
+
+  document.getElementById('alertCount').textContent = `SHOWING ${activeAlerts.length} ALERTS`;
+}
+
+function renderAlerts(list,p){
+  const params = p || getParams();
+  document.getElementById('alertsList').innerHTML = list.length===0
+    ? `<div style="text-align:center;padding:50px;color:var(--muted);">✅ No alerts match this filter.</div>`
+    : list.map((a,i)=>`
+    <div class="alert-card ${a.severity.toLowerCase()}" id="card-${a.id}"
+      style="animation:fadeUp .4s ease ${i*.08}s both;" onclick="toggleExpand('${a.id}')">
+
+      <div style="display:flex;align-items:flex-start;gap:14px;">
+        <div style="font-size:38px;line-height:1;flex-shrink:0;">${a.icon}</div>
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:7px;">
+            <div style="font-size:17px;font-weight:700;color:var(--text);">${a.title}</div>
+            <span class="badge badge-${a.severity.toLowerCase()}">${a.severity.toUpperCase()}</span>
+            <span class="badge badge-type">${a.type}</span>
+            ${a.urgency?`<span style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:3px 10px;border-radius:20px;background:rgba(251,191,36,0.1);color:var(--amber);border:1px solid rgba(251,191,36,0.25);">⏱ ${a.urgency}</span>`:''}
+          </div>
+          <div style="font-size:13px;color:var(--sub);line-height:1.7;margin-bottom:12px;">
+            ${a.triggerDetail?a.triggerDetail(params):a.detail.slice(0,130)+'...'}
+          </div>
+          <div class="action-box">
+            <span style="font-size:16px;">🎯</span>
+            <div style="font-size:12px;color:#fca5a5;line-height:1.6;">
+              <strong>Recommended Action:</strong> ${a.action}
+            </div>
+          </div>
+        </div>
+        <div style="font-size:18px;color:${a.color};opacity:.6;flex-shrink:0;margin-top:4px;transition:transform .2s;" id="arr-${a.id}">▾</div>
+      </div>
+
+      <!-- expanded detail -->
+      <div class="expand-body" id="exp-${a.id}">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--muted);margin-bottom:10px;">FULL DETAIL</div>
+            <div style="font-size:12px;color:var(--sub);line-height:1.8;">${a.detail}</div>
+            <div style="margin-top:12px;">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--muted);margin-bottom:8px;">CROP IMPACT</div>
+              <div style="font-size:12px;color:var(--sub);line-height:1.7;">${a.impact}</div>
+            </div>
+          </div>
+          <div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--muted);margin-bottom:10px;">PREVENTION STEPS</div>
+            ${(a.prevention||[]).map((pr,j)=>`
+            <div style="display:flex;gap:10px;align-items:flex-start;padding:8px 10px;
+              background:rgba(0,0,0,0.2);border-radius:8px;margin-bottom:7px;
+              border:1px solid rgba(255,255,255,0.05);">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${a.color};
+                background:${a.bg};border:1px solid ${a.border};
+                border-radius:5px;padding:1px 7px;flex-shrink:0;">0${j+1}</span>
+              <span style="font-size:12px;color:var(--sub);line-height:1.6;">${pr}</span>
+            </div>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function toggleExpand(id){
+  const exp = document.getElementById('exp-'+id);
+  const arr = document.getElementById('arr-'+id);
+  const isOpen = exp.classList.contains('open');
+  exp.classList.toggle('open');
+  arr.style.transform = isOpen?'rotate(0deg)':'rotate(180deg)';
+}
+
+function filter(sev,btn){
+  currentFilter = sev;
+  document.querySelectorAll('.filter-btn').forEach(b=>{
+    b.className='filter-btn';
+  });
+  btn.classList.add('active-'+sev.toLowerCase().replace('all','all'));
+  const filtered = sev==='all'?activeAlerts:activeAlerts.filter(a=>a.severity===sev);
+  document.getElementById('alertCount').textContent=`SHOWING ${filtered.length} ALERTS`;
+  renderAlerts(filtered);
+}
+
+function renderReadings(p){
+  document.getElementById('readingsCard').innerHTML=[
+    {icon:'🌡️',label:'Temperature',val:p.temp+'°C',pct:p.temp/50,c:p.temp>35?'#f87171':p.temp>30?'#fb923c':'#4ade80'},
+    {icon:'💧',label:'Humidity',val:p.hum+'%',pct:p.hum/100,c:p.hum>75?'#f87171':p.hum>60?'#fb923c':'#60a5fa'},
+    {icon:'🌱',label:'Soil Moisture',val:p.moist+'%',pct:p.moist/100,c:p.moist<30?'#f87171':p.moist>80?'#fb923c':'#4ade80'},
+    {icon:'☀️',label:'UV Index',val:p.uv,pct:p.uv/11,c:p.uv>8?'#f87171':p.uv>5?'#fb923c':'#4ade80'},
+    {icon:'🌬️',label:'Wind Speed',val:p.wind+'km/h',pct:p.wind/80,c:p.wind>50?'#f87171':'#60a5fa'},
+  ].map(r=>`
+    <div class="stat-row">
+      <span style="font-size:14px;">${r.icon}</span>
+      <span style="font-size:12px;color:var(--sub);flex:1;margin-left:8px;">${r.label}</span>
+      <div style="text-align:right;min-width:80px;">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:${r.c};margin-bottom:4px;">${r.val}</div>
+        <div class="bar-track" style="width:70px;height:4px;margin-left:auto;">
+          <div class="bar-fill" style="width:${Math.min(r.pct*100,100)}%;background:${r.c};"></div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function renderTimeline(){
+  const now = new Date();
+  const events = activeAlerts.slice(0,5).map((a,i)=>{
+    const t = new Date(now - i*3600000*2);
+    return {a,time:t.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})};
+  });
+  document.getElementById('timelineCard').innerHTML=events.map(({a,time})=>`
+    <div class="timeline-item">
+      <div class="tl-dot" style="background:${a.color};box-shadow:0 0 5px ${a.color};"></div>
+      <div style="flex:1;">
+        <div style="font-size:12px;color:var(--text);font-weight:700;">${a.icon} ${a.title}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">${a.type} · ${a.severity}</div>
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);">${time}</div>
+    </div>`).join('');
+}
+
+function renderPreventGrid(){
+  const cats = [
+    {icon:'🌿',title:'Integrated Pest Management',color:'#f87171',bg:'rgba(248,113,113,0.05)',bc:'rgba(248,113,113,0.2)',
+      steps:['Install pheromone traps at 8–10 per acre for monitoring','Follow Economic Threshold Levels (ETL) before spraying','Rotate insecticide chemical groups to prevent resistance','Encourage beneficial insects — avoid broad-spectrum pesticides']},
+    {icon:'🍄',title:'Disease Prevention Protocol',color:'#fb923c',bg:'rgba(251,146,60,0.05)',bc:'rgba(251,146,60,0.2)',
+      steps:['Apply preventive fungicide every 10–14 days in humid weather','Remove and destroy infected plant material immediately','Avoid irrigation in late evening to reduce leaf wetness','Use disease-free certified seed for next planting season']},
+    {icon:'☁️',title:'Weather Risk Preparedness',color:'#60a5fa',bg:'rgba(96,165,250,0.05)',bc:'rgba(96,165,250,0.2)',
+      steps:['Monitor IMD weather forecasts daily during critical crop stages','Keep anti-frost foggers and shade nets ready in cold season','Install hail protection nets in hail-prone areas','Schedule field operations based on weather window forecasts']},
+  ];
+  document.getElementById('preventGrid').innerHTML=cats.map((c,i)=>`
+    <div style="background:${c.bg};border:1px solid ${c.bc};border-radius:14px;padding:20px;
+      animation:fadeUp .4s ease ${i*.08}s both;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+        <div style="font-size:24px;width:42px;height:42px;background:${c.bg};border:1px solid ${c.bc};
+          border-radius:10px;display:flex;align-items:center;justify-content:center;">${c.icon}</div>
+        <div style="font-size:14px;font-weight:700;color:${c.color};">${c.title}</div>
+      </div>
+      ${c.steps.map((s,j)=>`
+      <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px;">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${c.color};
+          background:${c.bg};border:1px solid ${c.bc};
+          border-radius:5px;padding:1px 7px;flex-shrink:0;margin-top:1px;">0${j+1}</span>
+        <span style="font-size:12px;color:var(--sub);line-height:1.7;">${s}</span>
+      </div>`).join('')}
+    </div>`).join('');
+}
+</script>
+</body>
+</html>

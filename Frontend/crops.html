@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AgriMind AI — Crop Recommendation</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=JetBrains+Mono:wght@300;400;600;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+    <a href="index.html" style="position:fixed;bottom:20px;right:20px;background:#4ade80;color:#fff;padding:10px 14px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:12px;box-shadow:0 4px 12px rgba(74,222,128,0.3);z-index:1000;transition:all .2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
+      ← Back to Dashboard
+    </a>
+<!-- TOPBAR -->
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div style="font-size:28px;">🌿</div>
+    <div>
+      <div class="logo">Agri<span>Mind</span> AI</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;">CROP RECOMMENDATION ENGINE</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:14px;">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--sub);">📍 Pune, Maharashtra</div>
+    <div class="pill"><div class="dot"></div>AI READY</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ── INPUT FORM ── -->
+  <div class="sec">FARM INPUT PARAMETERS</div>
+  <div class="card fade1">
+    <div class="form-grid" id="formGrid">
+
+      <div>
+        <label class="form-label">📍 Location</label>
+        <input class="form-input" id="inp-location" value="Pune, Maharashtra" placeholder="Enter location"/>
+      </div>
+
+      <div>
+        <label class="form-label">🌦 Season</label>
+        <select class="form-input" id="inp-season">
+          <option value="Kharif">Kharif (Jun–Oct)</option>
+          <option value="Rabi">Rabi (Nov–Mar)</option>
+          <option value="Zaid">Zaid (Mar–Jun)</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label">📐 Field Size</label>
+        <input class="form-input" id="inp-field" value="5.2" placeholder="Size in acres"/>
+      </div>
+
+      <div>
+        <label class="form-label">🪨 Soil Type</label>
+        <select class="form-input" id="inp-soil">
+          <option>Black Cotton</option>
+          <option>Alluvial</option>
+          <option>Red Laterite</option>
+          <option>Sandy Loam</option>
+          <option>Clay</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label">⚗️ Soil pH — <span id="ph-display">6.4</span></label>
+        <div class="slider-wrap">
+          <input type="range" id="inp-ph" min="4" max="9" step="0.1" value="6.4"
+            oninput="document.getElementById('ph-display').textContent=parseFloat(this.value).toFixed(1)"/>
+        </div>
+      </div>
+
+      <div>
+        <label class="form-label">🌡️ Temperature — <span id="temp-display">28</span>°C</label>
+        <div class="slider-wrap">
+          <input type="range" id="inp-temp" min="10" max="45" value="28"
+            oninput="document.getElementById('temp-display').textContent=this.value"/>
+        </div>
+      </div>
+
+      <div>
+        <label class="form-label">💧 Humidity — <span id="hum-display">65</span>%</label>
+        <div class="slider-wrap">
+          <input type="range" id="inp-humidity" min="20" max="100" value="65"
+            oninput="document.getElementById('hum-display').textContent=this.value"/>
+        </div>
+      </div>
+
+      <div>
+        <label class="form-label">🌱 Nitrogen (N) — <span id="n-display">38</span> kg/ha</label>
+        <div class="slider-wrap">
+          <input type="range" id="inp-n" min="0" max="100" value="38"
+            oninput="document.getElementById('n-display').textContent=this.value"/>
+        </div>
+      </div>
+
+    </div>
+
+    <div style="display:flex;align-items:center;gap:12px;margin-top:20px;flex-wrap:wrap;">
+      <button class="btn-primary" id="analyzeBtn" onclick="analyze()">
+        🔍 Analyze &amp; Recommend Crops
+      </button>
+      <button class="btn-secondary" onclick="resetForm()">↺ Reset</button>
+      <div style="margin-left:auto;font-size:12px;color:var(--muted);">
+        Based on 50,000+ ICAR agronomic records
+      </div>
+    </div>
+  </div>
+
+  <!-- ── LOADING ── -->
+  <div id="loadingBlock" style="display:none;padding:50px;text-align:center;">
+    <div class="spinner"></div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);margin-top:14px;letter-spacing:1.5px;" id="loadMsg">
+      INITIALIZING ANALYSIS ENGINE...
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-top:8px;" id="loadSub"></div>
+  </div>
+
+  <!-- ── RESULTS ── -->
+  <div id="resultsBlock" style="display:none;">
+
+    <!-- top banner -->
+    <div class="sec">AI RECOMMENDATION RESULTS</div>
+    <div class="notice fade1" style="margin-bottom:18px;">
+      <span style="font-size:20px;">🤖</span>
+      <div id="aiSummary"></div>
+    </div>
+
+    <!-- crop cards -->
+    <div class="crop-grid" id="cropGrid"></div>
+
+    <!-- comparison table -->
+    <div class="sec" style="margin-top:28px;">FULL COMPARISON TABLE</div>
+    <div class="card fade3">
+      <table class="cmp-table" id="cmpTable">
+        <thead>
+          <tr>
+            <th>CROP</th>
+            <th>SUITABILITY</th>
+            <th>GROWTH DAYS</th>
+            <th>WATER NEED</th>
+            <th>MARKET PRICE</th>
+            <th>PROFIT POTENTIAL</th>
+            <th>RISK LEVEL</th>
+          </tr>
+        </thead>
+        <tbody id="cmpBody"></tbody>
+      </table>
+    </div>
+
+    <!-- tips -->
+    <div class="sec" style="margin-top:28px;">AGRONOMIC TIPS FOR TOP CROP</div>
+    <div class="card fade4" id="tipsCard"></div>
+
+  </div>
+
+</div>
+
+<script>
+// ── CROP DATABASE ─────────────────────────────────────────────────────
+const CROP_DB = {
+  Kharif:[
+    {
+      name:"Soybean",icon:"🫘",color:"#4ade80",glow:"rgba(74,222,128,0.08)",
+      base:88,
+      phRange:[6.0,7.5],tempRange:[20,35],humRange:[55,90],nMin:30,
+      growthDays:100,waterNeed:"Medium",waterLiters:"450–550 mm/season",
+      price:"₹3,800",priceNum:3800,profit:"High",risk:"Low",
+      soilFit:{"Black Cotton":6,"Alluvial":5,"Red Laterite":3,"Sandy Loam":4,"Clay":4},
+      tags:["Nitrogen-fixing","Kharif staple","Export demand"],
+      tips:[
+        "Inoculate seeds with Bradyrhizobium japonicum before sowing for nitrogen fixation",
+        "Maintain row spacing of 30–45 cm for maximum canopy coverage",
+        "Apply 20 kg P₂O₅/ha as basal dose before sowing",
+        "Harvest when 95% of pods turn brown (moisture ~13%)",
+        "Monitor for pod borer and aphids from flowering stage",
+      ]
+    },
+    {
+      name:"Cotton",icon:"🌿",color:"#60a5fa",glow:"rgba(96,165,250,0.08)",
+      base:84,
+      phRange:[5.8,8.0],tempRange:[25,40],humRange:[50,80],nMin:25,
+      growthDays:165,waterNeed:"Medium",waterLiters:"700–1200 mm/season",
+      price:"₹6,500",priceNum:6500,profit:"Very High",risk:"Medium",
+      soilFit:{"Black Cotton":7,"Alluvial":4,"Red Laterite":3,"Sandy Loam":3,"Clay":5},
+      tags:["Cash crop","High MSP","Black soil preferred"],
+      tips:[
+        "Plant Bt Cotton varieties for effective bollworm resistance",
+        "Apply split doses of nitrogen: 50% basal, 25% at square formation, 25% at boll formation",
+        "Maintain field drainage — cotton is highly sensitive to waterlogging",
+        "Apply foliar urea spray (2%) during boll development stage",
+        "Harvest early morning to avoid fiber quality degradation from heat",
+      ]
+    },
+    {
+      name:"Maize",icon:"🌽",color:"#fbbf24",glow:"rgba(251,191,36,0.08)",
+      base:78,
+      phRange:[5.8,7.0],tempRange:[18,32],humRange:[50,80],nMin:20,
+      growthDays:90,waterNeed:"Medium",waterLiters:"500–800 mm/season",
+      price:"₹1,900",priceNum:1900,profit:"Medium",risk:"Low",
+      soilFit:{"Black Cotton":4,"Alluvial":7,"Red Laterite":5,"Sandy Loam":6,"Clay":3},
+      tags:["Short duration","Feed crop","Drought tolerant"],
+      tips:[
+        "Apply 120 kg N/ha in 3 splits — best response to top-dress at knee-high stage",
+        "Irrigation critical at tasselling and silking stages — never skip these",
+        "Maintain plant population of 65,000–75,000 plants/hectare",
+        "Use weed management within first 30 days to avoid yield loss up to 40%",
+        "Harvest when grain moisture is 28–32% for silage or 14–16% for grain storage",
+      ]
+    },
+    {
+      name:"Turmeric",icon:"🟡",color:"#fb923c",glow:"rgba(251,146,60,0.08)",
+      base:72,
+      phRange:[5.5,7.0],tempRange:[20,35],humRange:[65,90],nMin:15,
+      growthDays:270,waterNeed:"High",waterLiters:"1500–2000 mm/season",
+      price:"₹12,000",priceNum:12000,profit:"Very High",risk:"Medium",
+      soilFit:{"Black Cotton":3,"Alluvial":5,"Red Laterite":6,"Sandy Loam":7,"Clay":3},
+      tags:["Spice crop","Premium price","Long duration"],
+      tips:[
+        "Use rhizomes of 40–60 g size with at least 2 viable buds for best germination",
+        "Apply FYM 25 t/ha and Azospirillum biofertilizer for organic yield boost",
+        "Provide shade netting during summer months to prevent leaf scorch",
+        "Harvest after 8–9 months when leaves turn yellow and dry",
+        "Cure harvested rhizomes by boiling 45–60 min before drying",
+      ]
+    },
+    {
+      name:"Groundnut",icon:"🥜",color:"#a78bfa",glow:"rgba(167,139,250,0.08)",
+      base:75,
+      phRange:[6.0,7.0],tempRange:[22,35],humRange:[45,75],nMin:15,
+      growthDays:120,waterNeed:"Low",waterLiters:"400–600 mm/season",
+      price:"₹5,200",priceNum:5200,profit:"High",risk:"Low",
+      soilFit:{"Black Cotton":3,"Alluvial":6,"Red Laterite":7,"Sandy Loam":8,"Clay":2},
+      tags:["Oil seed","Low water","Sandy soil preferred"],
+      tips:[
+        "Treat seeds with Trichoderma viride (4g/kg seed) before sowing to prevent collar rot",
+        "Apply gypsum 500 kg/ha at pegging stage for calcium supply to pods",
+        "Do not irrigate 15 days before harvest — allows shells to harden properly",
+        "Maintain pH 6.0–6.5 for maximum nutrient availability",
+        "Harvest when inner shell shows dark brown veins and leaves begin yellowing",
+      ]
+    },
+  ],
+  Rabi:[
+    {
+      name:"Wheat",icon:"🌾",color:"#fbbf24",glow:"rgba(251,191,36,0.08)",
+      base:90,phRange:[6.0,7.5],tempRange:[10,25],humRange:[40,70],nMin:30,
+      growthDays:120,waterNeed:"Medium",waterLiters:"450–650 mm/season",
+      price:"₹2,150",priceNum:2150,profit:"High",risk:"Low",
+      soilFit:{"Black Cotton":5,"Alluvial":8,"Red Laterite":3,"Sandy Loam":6,"Clay":5},
+      tags:["Rabi staple","High MSP","Cold tolerant"],
+      tips:[
+        "Sow in last week of October to mid-November for optimal yield",
+        "Apply 120 kg N, 60 kg P, 40 kg K per hectare as fertilizer dose",
+        "Provide 4–6 irrigations: CRI, tillering, jointing, flowering, milky and dough stages",
+        "Use resistant varieties like HD-2967 for rust disease management",
+        "Harvest at golden yellow stage with 15–17% grain moisture",
+      ]
+    },
+    {
+      name:"Chickpea",icon:"🟤",color:"#a78bfa",glow:"rgba(167,139,250,0.08)",
+      base:82,phRange:[5.5,7.0],tempRange:[15,30],humRange:[30,60],nMin:10,
+      growthDays:100,waterNeed:"Low",waterLiters:"300–400 mm/season",
+      price:"₹5,440",priceNum:5440,profit:"High",risk:"Low",
+      soilFit:{"Black Cotton":7,"Alluvial":5,"Red Laterite":4,"Sandy Loam":6,"Clay":4},
+      tags:["Pulse crop","Drought resistant","Nitrogen fixer"],
+      tips:[
+        "Inoculate seeds with Mesorhizobium ciceri at 200 g/10 kg seed",
+        "Avoid excessive nitrogen — chickpea fixes its own through root nodules",
+        "One pre-sowing irrigation and 1–2 supplemental irrigations are sufficient",
+        "Watch for pod borer — most damaging pest, use pheromone traps from 30 DAS",
+        "Harvest at 70–75% pod maturity to minimize shattering losses",
+      ]
+    },
+    {
+      name:"Mustard",icon:"🌻",color:"#fbbf24",glow:"rgba(251,191,36,0.08)",
+      base:80,phRange:[5.8,7.5],tempRange:[10,28],humRange:[35,65],nMin:20,
+      growthDays:110,waterNeed:"Low",waterLiters:"350–500 mm/season",
+      price:"₹5,650",priceNum:5650,profit:"High",risk:"Low",
+      soilFit:{"Black Cotton":4,"Alluvial":7,"Red Laterite":5,"Sandy Loam":7,"Clay":3},
+      tags:["Oil seed","Short duration","Cold tolerant"],
+      tips:[
+        "Sow at 5 kg/ha seed rate with row spacing of 30 cm",
+        "Apply sulfur 40 kg/ha — mustard is highly sulfur-responsive",
+        "Irrigation at branching, flowering and siliqua filling is critical",
+        "Harvest when 75% siliqua turn yellow to avoid shattering",
+        "Intercrop with wheat at 1:9 ratio for better returns and pest control",
+      ]
+    },
+    {
+      name:"Potato",icon:"🥔",color:"#fb923c",glow:"rgba(251,146,60,0.08)",
+      base:76,phRange:[5.0,6.5],tempRange:[10,25],humRange:[50,80],nMin:25,
+      growthDays:90,waterNeed:"High",waterLiters:"600–800 mm/season",
+      price:"₹1,500",priceNum:1500,profit:"Medium",risk:"High",
+      soilFit:{"Black Cotton":3,"Alluvial":7,"Red Laterite":5,"Sandy Loam":8,"Clay":2},
+      tags:["Vegetable crop","Cold crop","High water"],
+      tips:[
+        "Use certified disease-free seed tubers of 30–50 g size",
+        "Apply earthing-up twice: 25 and 40 days after planting",
+        "Monitor for late blight — spray Metalaxyl + Mancozeb every 7–10 days in humid weather",
+        "Haulm killing 15 days before harvest gives better skin set and shelf life",
+        "Store at 2–4°C with 90–95% humidity for long-term preservation",
+      ]
+    },
+    {
+      name:"Pea",icon:"🫛",color:"#4ade80",glow:"rgba(74,222,128,0.08)",
+      base:74,phRange:[6.0,7.5],tempRange:[8,22],humRange:[40,70],nMin:10,
+      growthDays:75,waterNeed:"Low",waterLiters:"300–500 mm/season",
+      price:"₹3,600",priceNum:3600,profit:"Medium",risk:"Low",
+      soilFit:{"Black Cotton":4,"Alluvial":7,"Red Laterite":4,"Sandy Loam":7,"Clay":3},
+      tags:["Pulse","Short duration","Cold loving"],
+      tips:[
+        "Sow in October–November for best yield; very sensitive to hot weather",
+        "Inoculate with Rhizobium leguminosarum for nitrogen fixation",
+        "Two irrigations — at pre-flowering and pod filling stage — are sufficient",
+        "Harvest green pods at 60–70% maturity for vegetable market",
+        "Use powdery mildew resistant varieties in humid regions",
+      ]
+    },
+  ],
+  Zaid:[
+    {
+      name:"Watermelon",icon:"🍉",color:"#f87171",glow:"rgba(248,113,113,0.08)",
+      base:86,phRange:[6.0,7.0],tempRange:[25,40],humRange:[40,70],nMin:15,
+      growthDays:75,waterNeed:"Medium",waterLiters:"400–600 mm/season",
+      price:"₹1,200",priceNum:1200,profit:"High",risk:"Medium",
+      soilFit:{"Black Cotton":3,"Alluvial":7,"Red Laterite":5,"Sandy Loam":8,"Clay":2},
+      tags:["Summer crop","Short duration","High market demand"],
+      tips:[
+        "Use drip irrigation with fertigation for best quality fruit and water saving",
+        "Train vines and avoid fruit contact with soil — use straw or net",
+        "Apply boron spray at flowering stage for better fruit set",
+        "Harvest when tendril opposite to fruit dries up and bottom spot turns cream",
+        "Intercrop with short-duration vegetables to maximize land utilization",
+      ]
+    },
+    {
+      name:"Cucumber",icon:"🥒",color:"#4ade80",glow:"rgba(74,222,128,0.08)",
+      base:82,phRange:[5.8,7.0],tempRange:[22,38],humRange:[50,80],nMin:20,
+      growthDays:55,waterNeed:"Medium",waterLiters:"350–500 mm/season",
+      price:"₹1,000",priceNum:1000,profit:"Medium",risk:"Low",
+      soilFit:{"Black Cotton":3,"Alluvial":7,"Red Laterite":5,"Sandy Loam":8,"Clay":3},
+      tags:["Vegetable","Fast growing","Market ready quickly"],
+      tips:[
+        "Sow seeds directly 2 cm deep, 2 seeds per hill, 60×30 cm spacing",
+        "Provide trellis support for climbing varieties to improve air circulation",
+        "Harvest every 2–3 days once fruiting starts to encourage continuous setting",
+        "Aphid and whitefly management essential — use yellow sticky traps",
+        "Mulching reduces soil moisture evaporation by 30% and controls weeds",
+      ]
+    },
+    {
+      name:"Moong",icon:"🟢",color:"#2dd4bf",glow:"rgba(45,212,191,0.08)",
+      base:78,phRange:[6.0,7.5],tempRange:[25,40],humRange:[40,75],nMin:10,
+      growthDays:65,waterNeed:"Low",waterLiters:"300–400 mm/season",
+      price:"₹7,755",priceNum:7755,profit:"Very High",risk:"Low",
+      soilFit:{"Black Cotton":5,"Alluvial":7,"Red Laterite":6,"Sandy Loam":7,"Clay":4},
+      tags:["Pulse","Drought tolerant","High MSP"],
+      tips:[
+        "Treat seeds with Rhizobium + PSB biofertilizer for better nodulation",
+        "Sow at 20–25 kg/ha with 30×10 cm spacing for optimum plant population",
+        "3–4 irrigations sufficient — critical at flowering and pod filling stages",
+        "Harvest in 2–3 pickings as pods mature at different times",
+        "Dry threshed grain to 10% moisture before storage to prevent fungal damage",
+      ]
+    },
+    {
+      name:"Sunflower",icon:"🌻",color:"#fbbf24",glow:"rgba(251,191,36,0.08)",
+      base:74,phRange:[6.0,7.5],tempRange:[20,35],humRange:[40,70],nMin:20,
+      growthDays:90,waterNeed:"Medium",waterLiters:"500–700 mm/season",
+      price:"₹6,400",priceNum:6400,profit:"High",risk:"Medium",
+      soilFit:{"Black Cotton":5,"Alluvial":7,"Red Laterite":5,"Sandy Loam":6,"Clay":4},
+      tags:["Oil seed","Bee pollinated","High oil content"],
+      tips:[
+        "Hand pollination or keeping beehives nearby increases yield by 15–30%",
+        "Apply boron 1.5 kg/ha + sulfur 20 kg/ha for higher oil content",
+        "Provide bird scaring during grain filling — birds can cause 20–40% loss",
+        "Harvest when back of head turns yellow-brown and seeds have hard shell",
+        "Decorticate and process within 2–3 months for fresh oil quality",
+      ]
+    },
+    {
+      name:"Bitter Gourd",icon:"🥬",color:"#86efac",glow:"rgba(134,239,172,0.08)",
+      base:70,phRange:[6.0,7.0],tempRange:[24,38],humRange:[55,80],nMin:15,
+      growthDays:60,waterNeed:"Medium",waterLiters:"400–550 mm/season",
+      price:"₹2,500",priceNum:2500,profit:"Medium",risk:"Low",
+      soilFit:{"Black Cotton":3,"Alluvial":6,"Red Laterite":5,"Sandy Loam":7,"Clay":3},
+      tags:["Vegetable","Medicinal value","Niche market"],
+      tips:[
+        "Soak seeds 24 hours before sowing to improve germination",
+        "Provide strong trellis — fruit quality improves significantly when hanging freely",
+        "Harvest fruits at tender stage (light green) every 3–4 days",
+        "Use pheromone traps for fruit fly management — major pest of cucurbits",
+        "Apply foliar boron at 0.2% at flowering for better fruit set and quality",
+      ]
+    },
+  ]
+};
+
+// ── SCORING ──────────────────────────────────────────────────────────
+function scoreCrop(crop, params){
+  let score = crop.base;
+  const {ph, temp, humidity, nitrogen, soil} = params;
+
+  // pH
+  if(ph >= crop.phRange[0] && ph <= crop.phRange[1]) score += 4;
+  else score -= Math.abs(ph - (crop.phRange[0]+crop.phRange[1])/2) * 2;
+
+  // temp
+  if(temp >= crop.tempRange[0] && temp <= crop.tempRange[1]) score += 4;
+  else score -= 3;
+
+  // humidity
+  if(humidity >= crop.humRange[0] && humidity <= crop.humRange[1]) score += 3;
+  else score -= 2;
+
+  // nitrogen
+  if(nitrogen >= crop.nMin) score += 3;
+  else score -= (crop.nMin - nitrogen) * 0.2;
+
+  // soil
+  score += (crop.soilFit[soil] || 3);
+
+  return Math.min(99, Math.max(40, Math.round(score)));
+}
+
+// ── ANALYZE ──────────────────────────────────────────────────────────
+function analyze(){
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true;
+  document.getElementById('loadingBlock').style.display = 'block';
+  document.getElementById('resultsBlock').style.display = 'none';
+
+  const msgs = [
+    ["READING SENSOR DATA...",           "Temperature, Humidity, Soil pH, NPK"],
+    ["MATCHING SEASONAL CROPS...",        "Filtering suitable crops for Kharif season"],
+    ["SCORING SUITABILITY...",            "Running multi-factor scoring algorithm"],
+    ["QUERYING ICAR DATABASE...",         "Retrieving agronomic guidelines"],
+    ["COMPUTING MARKET ANALYSIS...",      "Checking current MSP and market prices"],
+    ["GENERATING RECOMMENDATIONS...",    "Ranking and formatting results"],
+  ];
+  let i = 0;
+  const iv = setInterval(()=>{
+    if(i < msgs.length){
+      document.getElementById('loadMsg').textContent = msgs[i][0];
+      document.getElementById('loadSub').textContent = msgs[i][1];
+      i++;
+    } else {
+      clearInterval(iv);
+      setTimeout(showResults, 300);
+    }
+  }, 260);
+}
+
+function showResults(){
+  const season  = document.getElementById('inp-season').value;
+  const ph      = parseFloat(document.getElementById('inp-ph').value);
+  const temp    = parseInt(document.getElementById('inp-temp').value);
+  const humidity= parseInt(document.getElementById('inp-humidity').value);
+  const nitrogen= parseInt(document.getElementById('inp-n').value);
+  const soil    = document.getElementById('inp-soil').value;
+  const location= document.getElementById('inp-location').value;
+  const field   = document.getElementById('inp-field').value;
+
+  const params = {ph, temp, humidity, nitrogen, soil};
+  const crops  = (CROP_DB[season] || CROP_DB.Kharif)
+    .map(c=>({...c, score: scoreCrop(c, params)}))
+    .sort((a,b)=>b.score-a.score)
+    .slice(0,4);
+
+  document.getElementById('loadingBlock').style.display = 'none';
+  document.getElementById('resultsBlock').style.display = 'block';
+  document.getElementById('analyzeBtn').disabled = false;
+
+  // AI summary
+  const top = crops[0];
+  document.getElementById('aiSummary').innerHTML =
+    `Analysis complete for <strong style="color:var(--green);">${location}</strong> — ${field} acres, ${soil} soil, ${season} season.
+    Top recommendation is <strong style="color:var(--green);">${top.name}</strong> with a suitability score of
+    <strong style="color:var(--green);">${top.score}%</strong> based on your soil pH ${ph}, temperature ${temp}°C,
+    humidity ${humidity}%, and nitrogen levels. ${top.name} offers ${top.profit} profit potential at
+    <strong style="color:var(--amber);">${top.price}/quintal</strong> with ${top.waterNeed.toLowerCase()} water requirements over ${top.growthDays} days.`;
+
+  // Crop cards
+  document.getElementById('cropGrid').innerHTML = crops.map((c,i)=>{
+    const scoreColor = c.score>=85?'#4ade80':c.score>=70?'#fbbf24':'#fb923c';
+    const circ = 2*Math.PI*34; // r=34
+    const dash  = circ*(1-c.score/100);
+    return `
+    <div class="crop-card" style="--glow:${c.glow};animation:fadeUp .4s ease ${i*.1}s both;">
+      <div class="crop-rank ${i===0?'rank-1':i===1?'rank-2':''}">#${i+1} ${i===0?'BEST MATCH':i===1?'2ND CHOICE':'OPTION '+(i+1)}</div>
+
+      <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:16px;">
+        <div style="font-size:46px;line-height:1;">${c.icon}</div>
+        <div style="flex:1;">
+          <div style="font-family:'DM Serif Display',serif;font-size:22px;color:var(--text);margin-bottom:3px;">${c.name}</div>
+          <div style="font-size:12px;color:var(--sub);line-height:1.6;margin-bottom:8px;">${c.waterLiters} water need · ${c.growthDays} day cycle</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;">
+            ${c.tags.map(t=>`<span class="tag" style="background:rgba(74,222,128,0.08);color:var(--green);border:1px solid rgba(74,222,128,0.2);">${t}</span>`).join('')}
+          </div>
+        </div>
+        <!-- score ring -->
+        <div class="score-ring">
+          <svg width="80" height="80" viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="7"/>
+            <circle cx="40" cy="40" r="34" fill="none" stroke="${scoreColor}" stroke-width="7"
+              stroke-dasharray="${circ}" stroke-dashoffset="${circ}"
+              stroke-linecap="round"
+              style="animation:dashIn 1.2s ease ${i*.15}s forwards;--dash:${circ};"/>
+          </svg>
+          <div class="score-center">
+            <div class="score-num" style="color:${scoreColor};">${c.score}</div>
+            <div class="score-pct">%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bar-track" style="margin-bottom:16px;">
+        <div class="bar-fill" style="width:${c.score}%;background:linear-gradient(90deg,${c.color}88,${c.color});"></div>
+      </div>
+
+      <div class="chip-grid">
+        <div class="chip">
+          <div class="chip-lbl">MARKET PRICE</div>
+          <div class="chip-val" style="color:var(--amber);">${c.price}<span style="font-size:10px;color:var(--muted);">/q</span></div>
+        </div>
+        <div class="chip">
+          <div class="chip-lbl">GROWTH DAYS</div>
+          <div class="chip-val" style="color:var(--teal);">${c.growthDays}<span style="font-size:10px;color:var(--muted);">d</span></div>
+        </div>
+        <div class="chip">
+          <div class="chip-lbl">WATER NEED</div>
+          <div class="chip-val" style="color:var(--blue);">${c.waterNeed}</div>
+        </div>
+        <div class="chip">
+          <div class="chip-lbl">PROFIT</div>
+          <div class="chip-val" style="color:${c.profit==='Very High'?'#4ade80':c.profit==='High'?'#86efac':c.profit==='Medium'?'#fbbf24':'#f87171'};">${c.profit}</div>
+        </div>
+        <div class="chip">
+          <div class="chip-lbl">RISK LEVEL</div>
+          <div class="chip-val" style="color:${c.risk==='Low'?'#4ade80':c.risk==='Medium'?'#fbbf24':'#f87171'};">${c.risk}</div>
+        </div>
+        <div class="chip">
+          <div class="chip-lbl">SEASON FIT</div>
+          <div class="chip-val" style="color:var(--purple);">${season}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Comparison table
+  document.getElementById('cmpBody').innerHTML = crops.map((c,i)=>{
+    const sc = c.score>=85?'#4ade80':c.score>=70?'#fbbf24':'#fb923c';
+    return `
+    <tr>
+      <td><span style="font-size:18px;">${c.icon}</span> <strong style="color:var(--text);">${c.name}</strong>
+        ${i===0?'<span class="tag" style="background:rgba(251,191,36,0.1);color:var(--amber);border:1px solid rgba(251,191,36,0.25);font-size:9px;margin-left:6px;">TOP PICK</span>':''}</td>
+      <td>
+        <span style="font-family:'JetBrains Mono',monospace;font-weight:700;color:${sc};">${c.score}%</span>
+        <div class="bar-track" style="margin-top:5px;width:80px;height:4px;">
+          <div class="bar-fill" style="width:${c.score}%;background:${sc};"></div>
+        </div>
+      </td>
+      <td class="mono">${c.growthDays} days</td>
+      <td><span style="color:${c.waterNeed==='Low'?'#4ade80':c.waterNeed==='Medium'?'#60a5fa':'#f87171'};">${c.waterNeed}</span></td>
+      <td style="color:var(--amber);font-family:'JetBrains Mono',monospace;">${c.price}/q</td>
+      <td><span style="color:${c.profit==='Very High'||c.profit==='High'?'#4ade80':'#fbbf24'};">${c.profit}</span></td>
+      <td><span class="tag" style="background:${c.risk==='Low'?'rgba(74,222,128,0.1)':c.risk==='Medium'?'rgba(251,191,36,0.1)':'rgba(248,113,113,0.1)'};
+        color:${c.risk==='Low'?'#4ade80':c.risk==='Medium'?'#fbbf24':'#f87171'};
+        border:1px solid ${c.risk==='Low'?'rgba(74,222,128,0.25)':c.risk==='Medium'?'rgba(251,191,36,0.25)':'rgba(248,113,113,0.25)'};">${c.risk}</span></td>
+    </tr>`;
+  }).join('');
+
+  // Tips for top crop
+  const tips = crops[0].tips || [];
+  document.getElementById('tipsCard').innerHTML = `
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;">
+      <span style="font-size:32px;">${crops[0].icon}</span>
+      <div>
+        <div style="font-family:'DM Serif Display',serif;font-size:18px;color:var(--green);">Agronomic Tips for ${crops[0].name}</div>
+        <div style="font-size:12px;color:var(--muted);">Based on ICAR & KVK field guidelines</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      ${tips.map((t,i)=>`
+      <div style="display:flex;gap:12px;align-items:flex-start;padding:11px 14px;
+        background:rgba(0,0,0,0.2);border-radius:9px;border:1px solid rgba(255,255,255,0.05);
+        animation:fadeUp .4s ease ${i*.07}s both;">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);
+          background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.2);
+          border-radius:6px;padding:2px 8px;flex-shrink:0;margin-top:1px;">0${i+1}</span>
+        <span style="font-size:13px;color:var(--sub);line-height:1.7;">${t}</span>
+      </div>`).join('')}
+    </div>`;
+}
+
+function resetForm(){
+  document.getElementById('inp-ph').value = 6.4;
+  document.getElementById('ph-display').textContent = '6.4';
+  document.getElementById('inp-temp').value = 28;
+  document.getElementById('temp-display').textContent = '28';
+  document.getElementById('inp-humidity').value = 65;
+  document.getElementById('hum-display').textContent = '65';
+  document.getElementById('inp-n').value = 38;
+  document.getElementById('n-display').textContent = '38';
+  document.getElementById('inp-season').value = 'Kharif';
+  document.getElementById('inp-soil').value = 'Black Cotton';
+  document.getElementById('resultsBlock').style.display = 'none';
+}
+
+// style fix for monospace in table
+document.head.insertAdjacentHTML('beforeend',`<style>.mono{font-family:'JetBrains Mono',monospace;}</style>`);
+</script>
+</body>
+</html>

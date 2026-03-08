@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AgriMind AI — Irrigation Planning</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=JetBrains+Mono:wght@300;400;600;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<a href="index.html" style="position:fixed;bottom:20px;right:20px;background:#4ade80;color:#fff;padding:10px 14px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:12px;box-shadow:0 4px 12px rgba(74,222,128,0.3);z-index:1000;transition:all .2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
+  ← Back to Dashboard
+</a>
+<!-- TOPBAR -->
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div style="font-size:28px;">💧</div>
+    <div>
+      <div class="logo">Agri<span>Mind</span> AI</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;">PRECISION IRRIGATION PLANNER</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:14px;">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--sub);">📍 Pune, Maharashtra</div>
+    <div class="pill"><div class="dot"></div>LIVE</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ── INPUT FORM ── -->
+  <div class="sec">FARM & CROP INPUT PARAMETERS</div>
+  <div class="card fade1">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;" class="form-grid-4">
+
+      <div>
+        <label class="form-label">🌾 Crop Type</label>
+        <select class="form-input" id="inp-crop">
+          <option>Soybean</option><option>Cotton</option><option>Maize</option>
+          <option>Wheat</option><option>Turmeric</option><option>Groundnut</option>
+          <option>Watermelon</option><option>Chickpea</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label">📅 Growth Stage</label>
+        <select class="form-input" id="inp-stage">
+          <option>Germination</option><option>Vegetative</option>
+          <option>Flowering</option><option>Pod/Fruit Fill</option><option>Maturity</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label">📐 Field Size (acres)</label>
+        <input class="form-input" id="inp-field" value="5.2" type="number" min="0.1" step="0.1"/>
+      </div>
+
+      <div>
+        <label class="form-label">💧 Irrigation Method</label>
+        <select class="form-input" id="inp-method">
+          <option>Drip</option><option>Sprinkler</option><option>Flood</option><option>Furrow</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label">🌱 Soil Moisture — <span id="moist-disp">42</span>%</label>
+        <input type="range" id="inp-moisture" min="0" max="100" value="42"
+          oninput="document.getElementById('moist-disp').textContent=this.value"/>
+      </div>
+
+      <div>
+        <label class="form-label">🌡️ Temperature — <span id="temp-disp">28</span>°C</label>
+        <input type="range" id="inp-temp" min="10" max="45" value="28"
+          oninput="document.getElementById('temp-disp').textContent=this.value"/>
+      </div>
+
+      <div>
+        <label class="form-label">🌧️ Rainfall Forecast — <span id="rain-disp">12</span>mm</label>
+        <input type="range" id="inp-rain" min="0" max="100" value="12"
+          oninput="document.getElementById('rain-disp').textContent=this.value"/>
+      </div>
+
+      <div>
+        <label class="form-label">💧 Humidity — <span id="hum-disp">65</span>%</label>
+        <input type="range" id="inp-hum" min="20" max="100" value="65"
+          oninput="document.getElementById('hum-disp').textContent=this.value"/>
+      </div>
+
+    </div>
+
+    <div style="display:flex;align-items:center;gap:12px;margin-top:20px;flex-wrap:wrap;">
+      <button class="btn-primary" id="planBtn" onclick="generatePlan()">
+        💧 Generate Irrigation Plan
+      </button>
+      <button class="btn-secondary" onclick="resetForm()">↺ Reset</button>
+      <div style="margin-left:auto;font-size:12px;color:var(--muted);">
+        Based on FAO-56 Penman–Monteith evapotranspiration model
+      </div>
+    </div>
+  </div>
+
+  <!-- ── LOADING ── -->
+  <div id="loadBlock" style="display:none;padding:50px;text-align:center;">
+    <div class="spinner"></div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);margin-top:14px;letter-spacing:1.5px;" id="loadMsg">
+      INITIALIZING...
+    </div>
+  </div>
+
+  <!-- ── RESULTS ── -->
+  <div id="resultsBlock" style="display:none;">
+
+    <!-- summary cards -->
+    <div class="sec">IRRIGATION SUMMARY</div>
+    <div class="sum-grid fade1" id="sumGrid"></div>
+
+    <!-- tip -->
+    <div class="tip-box fade2" style="margin-top:16px;" id="tipBox"></div>
+
+    <!-- table + chart side by side -->
+    <div style="display:grid;grid-template-columns:1fr 340px;gap:16px;margin-top:24px;">
+
+      <!-- table -->
+      <div>
+        <div class="sec">7-DAY SCHEDULE</div>
+        <div class="card fade3">
+          <table class="irr-table">
+            <thead>
+              <tr>
+                <th>DAY</th><th>DATE</th><th>STATUS</th>
+                <th>AMOUNT</th><th>METHOD</th><th>TIME</th><th>REASON</th>
+              </tr>
+            </thead>
+            <tbody id="irrBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- right panel -->
+      <div>
+        <div class="sec">DAILY WATER USAGE</div>
+        <div class="card fade3" style="height:fit-content;">
+          <div class="chart-bar-wrap" id="chartBars"></div>
+          <div style="display:flex;gap:0;" id="chartLabels"></div>
+          <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px;">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;margin-bottom:10px;">WATER LEGEND</div>
+            <div style="display:flex;flex-direction:column;gap:7px;font-size:12px;">
+              <div style="display:flex;align-items:center;gap:8px;"><div style="width:12px;height:12px;border-radius:3px;background:#60a5fa;"></div><span style="color:var(--sub);">Drip Irrigation</span></div>
+              <div style="display:flex;align-items:center;gap:8px;"><div style="width:12px;height:12px;border-radius:3px;background:#2dd4bf;"></div><span style="color:var(--sub);">Sprinkler</span></div>
+              <div style="display:flex;align-items:center;gap:8px;"><div style="width:12px;height:12px;border-radius:3px;background:#fbbf24;"></div><span style="color:var(--sub);">Flood / Furrow</span></div>
+              <div style="display:flex;align-items:center;gap:8px;"><div style="width:12px;height:12px;border-radius:3px;background:rgba(255,255,255,0.08);"></div><span style="color:var(--sub);">No Irrigation</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- visual calendar -->
+    <div class="sec" style="margin-top:8px;">WEEKLY VISUAL CALENDAR</div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:12px;" class="cal-grid fade4" id="calGrid"></div>
+
+    <!-- crop stage info -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:24px;">
+
+      <div>
+        <div class="sec">CROP WATER REQUIREMENTS BY STAGE</div>
+        <div class="card fade4" id="stageCard"></div>
+      </div>
+
+      <div>
+        <div class="sec">WATER SAVING TIPS</div>
+        <div class="card fade5" id="tipsCard"></div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+// ── CROP WATER DATA ────────────────────────────────────────────────
+const CROP_DATA = {
+  Soybean:{kc:[0.4,0.8,1.15,0.5],stages:["Germination","Vegetative","Flowering","Maturity"],totalMM:"450–550",criticalStage:"Flowering & Pod Fill"},
+  Cotton:{kc:[0.35,0.75,1.2,0.6],stages:["Germination","Vegetative","Boll Formation","Maturity"],totalMM:"700–1200",criticalStage:"Boll Formation"},
+  Maize:{kc:[0.3,0.7,1.2,0.6],stages:["Germination","Vegetative","Tasselling","Maturity"],totalMM:"500–800",criticalStage:"Tasselling & Silking"},
+  Wheat:{kc:[0.4,0.7,1.1,0.4],stages:["Germination","Tillering","Heading","Maturity"],totalMM:"450–650",criticalStage:"Heading & Grain Fill"},
+  Turmeric:{kc:[0.5,0.9,1.1,0.7],stages:["Sprouting","Vegetative","Rhizome Dev.","Maturity"],totalMM:"1500–2000",criticalStage:"Rhizome Development"},
+  Groundnut:{kc:[0.4,0.7,1.05,0.6],stages:["Germination","Vegetative","Pegging","Maturity"],totalMM:"400–600",criticalStage:"Pegging & Pod Fill"},
+  Watermelon:{kc:[0.4,0.75,1.0,0.75],stages:["Germination","Vegetative","Flowering","Fruit Fill"],totalMM:"400–600",criticalStage:"Fruit Fill"},
+  Chickpea:{kc:[0.4,0.7,1.05,0.3],stages:["Germination","Vegetative","Flowering","Maturity"],totalMM:"300–400",criticalStage:"Flowering"},
+};
+
+const TIPS_DB = {
+  Drip:["Drip irrigation saves 30–50% water vs flood — maintain 90% efficiency","Set drip timers for early morning (5–7 AM) to minimize evaporation","Clean drip emitters monthly to prevent clogging and uneven distribution","Use tensiometer at 30 cm depth to monitor soil water tension accurately","Fertigate through drip lines to combine irrigation and fertilization"],
+  Sprinkler:["Operate sprinklers in early morning or evening to reduce evaporation loss","Check for uniform distribution — use catch cans to measure output variation","Wind speeds >15 km/h reduce sprinkler efficiency by 20–30%; avoid spraying","Rotate sprinkler heads regularly to ensure even field coverage","Monitor pressure at 2–3 kg/cm² for optimal sprinkler performance"],
+  Flood:["Level field to ±2 cm precision for uniform flood irrigation distribution","Apply bunds (ridges) to retain water and reduce runoff losses","Avoid over-irrigation — waterlogging reduces yield by 15–40%","Follow up flood irrigation with light tillage to break soil crust","Apply irrigation in early morning to give water time to percolate before heat"],
+  Furrow:["Make furrows 60–75 cm apart for most row crops","Apply furrow irrigation at 1/3 field capacity depletion","Use siphon tubes or gated pipes for controlled water delivery","Tail water recovery systems save 20–30% of applied water","Check furrow length — long furrows >150m lose 30% water before reaching end"],
+};
+
+// ── GENERATE PLAN ──────────────────────────────────────────────────
+function generatePlan(){
+  const btn = document.getElementById('planBtn');
+  btn.disabled = true;
+  document.getElementById('loadBlock').style.display='block';
+  document.getElementById('resultsBlock').style.display='none';
+
+  const msgs = [
+    "READING SENSOR DATA...","COMPUTING EVAPOTRANSPIRATION (FAO-56)...",
+    "ANALYZING SOIL WATER BALANCE...","CHECKING RAINFALL FORECAST...",
+    "SCHEDULING IRRIGATION EVENTS...","OPTIMIZING WATER VOLUME..."
+  ];
+  let i=0;
+  const iv = setInterval(()=>{
+    if(i<msgs.length){document.getElementById('loadMsg').textContent=msgs[i];i++;}
+    else{clearInterval(iv);setTimeout(showPlan,300);}
+  },240);
+}
+
+function showPlan(){
+  const crop     = document.getElementById('inp-crop').value;
+  const stage    = document.getElementById('inp-stage').value;
+  const field    = parseFloat(document.getElementById('inp-field').value)||5.2;
+  const method   = document.getElementById('inp-method').value;
+  const moisture = parseInt(document.getElementById('inp-moisture').value);
+  const temp     = parseInt(document.getElementById('inp-temp').value);
+  const rain     = parseInt(document.getElementById('inp-rain').value);
+  const humidity = parseInt(document.getElementById('inp-hum').value);
+
+  document.getElementById('loadBlock').style.display='none';
+  document.getElementById('resultsBlock').style.display='block';
+  document.getElementById('planBtn').disabled=false;
+
+  // ── build schedule ──
+  const days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  const dates = ["Jun 9","Jun 10","Jun 11","Jun 12","Jun 13","Jun 14","Jun 15"];
+  const rainForecast = [0, 0, rain>8?rain:0, 0, 0, 0, rain>15?Math.round(rain*0.4):0];
+
+  const schedule = days.map((d,i)=>{
+    const todayRain = rainForecast[i];
+    const soilMoist = moisture - (i*1.8) + (todayRain*0.4);
+    const needsWater = soilMoist < 45 && todayRain < 10;
+    const baseAmt = Math.max(0, Math.round((50 - soilMoist) * 0.9 + (temp-25)*0.5));
+    const effAmt = method==='Drip'?baseAmt:method==='Sprinkler'?Math.round(baseAmt*1.15):Math.round(baseAmt*1.4);
+    const time = temp>32?'6:00 AM':method==='Drip'?'6:30 AM':'7:00 AM';
+
+    let reason = '';
+    if(!needsWater && todayRain>=10) reason=`Rain forecast ${Math.round(todayRain)}mm — skip`;
+    else if(!needsWater && soilMoist>=50) reason='Soil moisture adequate';
+    else if(!needsWater) reason='Rest day — monitor field';
+    else if(i===1) reason='Soil moisture below threshold';
+    else if(i===3) reason='Post-peak water requirement';
+    else if(i===5) reason='Heat stress prevention';
+    else reason='Scheduled top-up irrigation';
+
+    return {
+      day:d, date:dates[i],
+      irrigate:needsWater,
+      amount:needsWater?Math.max(15,effAmt):0,
+      method:needsWater?method:'—',
+      time:needsWater?time:'—',
+      rain:todayRain, reason,
+    };
+  });
+
+  const irrDays = schedule.filter(s=>s.irrigate);
+  const totalWater = schedule.reduce((s,d)=>s+d.amount,0);
+  const floodEquiv = Math.round(totalWater*1.45);
+  const saving = Math.round((1-totalWater/floodEquiv)*100);
+  const totalLiters = Math.round(totalWater * field * 404.7 / 10);
+
+  // ── summary ──
+  document.getElementById('sumGrid').innerHTML = [
+    {icon:'💧',val:`${irrDays.length} / 7`,lbl:'Irrigation Days',color:'var(--blue)'},
+    {icon:'🪣',val:`${totalWater} mm`,lbl:'Total Water Volume',color:'var(--cyan)'},
+    {icon:'📉',val:`~${saving}%`,lbl:'Water Saved vs Flood',color:'var(--green)'},
+    {icon:'🏞️',val:`${totalLiters.toLocaleString()} L`,lbl:`Total for ${field} acres`,color:'var(--amber)'},
+  ].map((s,i)=>`
+    <div class="sum-card" style="animation:fadeUp .4s ease ${i*.07}s both;">
+      <div style="font-size:28px;margin-bottom:8px;">${s.icon}</div>
+      <div class="sum-val" style="color:${s.color};">${s.val}</div>
+      <div class="sum-lbl">${s.lbl}</div>
+    </div>`).join('');
+
+  // tip
+  document.getElementById('tipBox').innerHTML = `
+    <span style="font-size:20px;">🤖</span>
+    <div style="font-size:12px;line-height:1.7;">
+      Analysis complete for <strong style="color:var(--blue);">${crop}</strong> at
+      <strong style="color:var(--blue);">${stage}</strong> stage using
+      <strong style="color:var(--cyan);">${method}</strong> irrigation on ${field} acres.
+      Soil moisture at <strong>${moisture}%</strong> with ${temp}°C temperature.
+      ${irrDays.length} irrigation events scheduled — saving approximately
+      <strong style="color:var(--green);">${saving}% water</strong> compared to conventional flood irrigation.
+      ${rain>10?`Rainfall of ${rain}mm forecast mid-week — adjusted schedule accordingly.`:''}
+    </div>`;
+
+  // table
+  const methodClass = m => m==='Drip'?'m-drip':m==='Sprinkler'?'m-sprinkler':m==='—'?'m-none':'m-flood';
+  document.getElementById('irrBody').innerHTML = schedule.map(s=>`
+    <tr>
+      <td style="font-family:'JetBrains Mono',monospace;color:var(--blue);font-weight:700;">${s.day}</td>
+      <td style="color:var(--sub);">${s.date}</td>
+      <td>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;
+          padding:4px 12px;border-radius:20px;
+          background:${s.irrigate?'rgba(96,165,250,0.12)':'rgba(255,255,255,0.04)'};
+          color:${s.irrigate?'#60a5fa':'var(--muted)'};
+          border:1px solid ${s.irrigate?'rgba(96,165,250,0.3)':'rgba(255,255,255,0.07)'};">
+          ${s.irrigate?'IRRIGATE':'SKIP'}
+        </span>
+      </td>
+      <td style="font-family:'JetBrains Mono',monospace;color:${s.irrigate?'var(--blue)':'var(--muted)'};">
+        ${s.amount?s.amount+' mm':'—'}
+      </td>
+      <td><span class="method-badge ${methodClass(s.method)}">${s.method}</span></td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--cyan);">${s.time}</td>
+      <td style="font-size:12px;color:var(--sub);">
+        ${s.rain>0?`<span style="color:#60a5fa;margin-right:4px;">🌧️${Math.round(s.rain)}mm</span>`:''}
+        ${s.reason}
+      </td>
+    </tr>`).join('');
+
+  // chart
+  const maxAmt = Math.max(...schedule.map(s=>s.amount),1);
+  document.getElementById('chartBars').innerHTML = schedule.map(s=>{
+    const h = s.amount?(s.amount/maxAmt)*90:6;
+    const c = s.method==='Drip'?'#60a5fa':s.method==='Sprinkler'?'#2dd4bf':s.method==='—'?'rgba(255,255,255,0.07)':'#fbbf24';
+    return `<div class="chart-bar" style="height:${h}px;background:${c};min-height:6px;" title="${s.day}: ${s.amount||0}mm"></div>`;
+  }).join('');
+  document.getElementById('chartLabels').innerHTML = schedule.map(s=>`
+    <div class="chart-label" style="flex:1;">${s.day}</div>`).join('');
+
+  // calendar
+  document.getElementById('calGrid').innerHTML = schedule.map(s=>`
+    <div class="cal-day ${s.irrigate?'irr':'no-irr'}" style="animation:fadeUp .4s ease both;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);">${s.day}</div>
+      <div style="font-size:9px;color:var(--muted);margin-bottom:10px;">${s.date}</div>
+      <div style="font-size:26px;margin-bottom:8px;">${s.irrigate?'💧':s.rain>5?'🌧️':'☀️'}</div>
+      ${s.irrigate?`
+        <div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--blue);">${s.amount}mm</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px;">${s.method}</div>
+        <div style="font-size:10px;color:var(--cyan);margin-top:2px;">${s.time}</div>
+      `:`<div style="font-size:11px;color:var(--muted);margin-top:4px;">No Irrigation</div>`}
+    </div>`).join('');
+
+  // crop stage card
+  const cd = CROP_DATA[crop] || CROP_DATA.Soybean;
+  document.getElementById('stageCard').innerHTML = `
+    <div style="margin-bottom:14px;">
+      <div style="font-size:13px;color:var(--blue);margin-bottom:4px;">🌾 ${crop} — Total Requirement: ${cd.totalMM} mm</div>
+      <div style="font-size:12px;color:var(--muted);">Critical stage: <span style="color:var(--amber);">${cd.criticalStage}</span></div>
+    </div>
+    ${cd.stages.map((s,i)=>`
+    <div class="stage-row" style="animation:fadeUp .4s ease ${i*.08}s both;">
+      <div style="width:7px;height:7px;border-radius:50%;
+        background:${cd.kc[i]>1?'#f87171':cd.kc[i]>0.8?'#fbbf24':'#4ade80'};
+        box-shadow:0 0 5px ${cd.kc[i]>1?'#f87171':cd.kc[i]>0.8?'#fbbf24':'#4ade80'};
+        flex-shrink:0;"></div>
+      <div style="flex:1;font-size:12px;color:var(--sub);">${s}</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--blue);">Kc = ${cd.kc[i]}</div>
+      <div style="font-size:10px;color:var(--muted);margin-left:8px;">${cd.kc[i]>1?'High':cd.kc[i]>0.8?'Medium':'Low'} demand</div>
+    </div>`).join('')}`;
+
+  // tips card
+  const tips = TIPS_DB[method] || TIPS_DB.Drip;
+  document.getElementById('tipsCard').innerHTML = `
+    <div style="font-size:13px;color:var(--blue);margin-bottom:14px;">💡 ${method} Irrigation Best Practices</div>
+    ${tips.map((t,i)=>`
+    <div style="display:flex;gap:10px;align-items:flex-start;padding:9px 12px;
+      background:rgba(0,0,0,0.2);border-radius:8px;margin-bottom:8px;
+      border:1px solid rgba(255,255,255,0.05);
+      animation:fadeUp .4s ease ${i*.07}s both;">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--blue);
+        background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.2);
+        border-radius:5px;padding:1px 7px;flex-shrink:0;margin-top:1px;">0${i+1}</span>
+      <span style="font-size:12px;color:var(--sub);line-height:1.7;">${t}</span>
+    </div>`).join('')}`;
+}
+
+function resetForm(){
+  ['inp-moisture','inp-temp','inp-rain','inp-hum'].forEach(id=>{
+    const el = document.getElementById(id);
+    const defaults = {moisture:42,temp:28,rain:12,hum:65};
+    const key = id.replace('inp-','');
+    el.value = defaults[key];
+    document.getElementById(key+'-disp').textContent = defaults[key];
+  });
+  document.getElementById('resultsBlock').style.display='none';
+}
+</script>
+</body>
+</html>
