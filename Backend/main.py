@@ -15,6 +15,15 @@ app = FastAPI(
     version="1.0.0",
 )
 
+@app.get("/")
+def test():
+    return {"status": "working"}
+
+@app.get("/")
+def home():
+    return {"message": "Welcome to AgriMind AI API! Go to /docs for documentation."}
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],          # update to your Vercel domain in production
