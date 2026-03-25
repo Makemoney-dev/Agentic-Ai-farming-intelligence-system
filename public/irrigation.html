@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AgriMind AI — Irrigation Planner</title>
+<link rel="stylesheet" href="/public/style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:14px;">
+    <div style="font-size:26px;">💧</div>
+    <div>
+      <div class="logo">Agri<em>Mind</em> AI</div>
+      <div class="topbar-sub">PRECISION IRRIGATION PLANNER</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="tb-meta">📍 Pune, Maharashtra</div>
+    <div class="pill"><span class="blink-dot"></span>LIVE</div>
+  </div>
+</div>
+
+<nav class="sidenav">
+  <a href="/public/index.html"      class="nav-icon">🏠<span class="tooltip">Dashboard</span></a>
+  <a href="/public/crops.html"      class="nav-icon">🌾<span class="tooltip">Crop Insights</span></a>
+  <a href="/public/irrigation.html" class="nav-icon active">💧<span class="tooltip">Irrigation</span></a>
+  <a href="/public/alerts.html"     class="nav-icon">⚠️<span class="tooltip">Risk Alerts</span></a>
+  <a href="javascript:void(0)" class="nav-icon" onclick="toggleAgriChat()" title="AI Advisor">
+    <span class="tooltip">AI Advisor</span>
+    <span style="font-size: 20px;">🤖</span>
+</nav>
+
+<div class="wrap">
+
+  <!-- FORM -->
+  <div class="sec-label fade1">FARM & CROP INPUT PARAMETERS</div>
+  <div class="card fade1">
+    <div class="form-grid">
+
+      <div>
+        <label class="form-label">🌾 Crop Type</label>
+        <select class="form-input" id="inp-crop">
+          <option>Soybean</option><option>Cotton</option><option>Maize</option>
+          <option>Wheat</option><option>Turmeric</option><option>Groundnut</option>
+          <option>Watermelon</option><option>Chickpea</option><option>Sunflower</option>
+          <option>Moong</option><option>Potato</option><option>Mustard</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label">📅 Growth Stage</label>
+        <select class="form-input" id="inp-stage">
+          <option>Germination</option><option>Vegetative</option>
+          <option>Flowering</option><option>Pod/Fruit Fill</option><option>Maturity</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label">📐 Field Size (acres)</label>
+        <input class="form-input" id="inp-field" value="5.2" type="number" min="0.1" step="0.1"/>
+      </div>
+
+      <div>
+        <label class="form-label">💧 Irrigation Method</label>
+        <select class="form-input" id="inp-method">
+          <option>Drip</option><option>Sprinkler</option><option>Flood</option><option>Furrow</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label">🌱 Soil Moisture — <span class="slider-val" id="moist-disp">42</span>%</label>
+        <input type="range" id="inp-moisture" min="0" max="100" value="42"
+          oninput="document.getElementById('moist-disp').textContent=this.value"/>
+      </div>
+
+      <div>
+        <label class="form-label">🌡️ Temperature — <span class="slider-val" id="temp-disp">28</span>°C</label>
+        <input type="range" id="inp-temp" min="10" max="45" value="28"
+          oninput="document.getElementById('temp-disp').textContent=this.value"/>
+      </div>
+
+      <div>
+        <label class="form-label">💧 Humidity — <span class="slider-val" id="hum-disp">65</span>%</label>
+        <input type="range" id="inp-hum" min="10" max="100" value="65"
+          oninput="document.getElementById('hum-disp').textContent=this.value"/>
+      </div>
+
+      <div>
+        <label class="form-label">🌧️ Rainfall Forecast — <span class="slider-val" id="rain-disp">12</span>mm</label>
+        <input type="range" id="inp-rain" min="0" max="100" value="12"
+          oninput="document.getElementById('rain-disp').textContent=this.value"/>
+      </div>
+
+    </div>
+    <div style="margin-top:22px; display:flex; gap:12px; align-items:center;">
+      <button class="btn-primary" onclick="generatePlan()">
+        <span>💧</span> Generate 7-Day Plan
+      </button>
+      <div id="planStatus" style="font-family:var(--font-mono);font-size:11px;color:var(--text2);"></div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="resultsSection" style="display: none;">
+
+    <!-- Summary cards -->
+    <div class="sec-label fade2">WATER USAGE SUMMARY</div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;" class="fade2" id="summaryCards"></div>
+
+    <!-- 7-day schedule -->
+    <div class="sec-label fade3">7-DAY IRRIGATION SCHEDULE</div>
+    <div class="card fade3">
+      <div class="sched-grid" id="schedGrid"></div>
+    </div>
+
+    <!-- Detailed table -->
+    <div class="sec-label fade4">DETAILED SCHEDULE</div>
+    <div class="card fade4">
+      <table id="schedTable" style="width:100%;border-collapse:collapse;font-size:12px;"></table>
+    </div>
+
+    <!-- ETo chart -->
+    <div class="sec-label fade5">EVAPOTRANSPIRATION ANALYSIS (ETc mm/day)</div>
+    <div class="card fade5">
+      <div id="etChart" style="display:flex;align-items:flex-end;gap:8px;height:100px;padding:10px 0;"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API = 'http://127.0.0.1:8000';
+
+// ── FAO-56 Client-side implementation ──
+const CROP_KC = {
+  Soybean:[0.40,0.80,1.15,0.50], Cotton:[0.35,0.75,1.20,0.60], Maize:[0.30,0.70,1.20,0.60],
+  Wheat:[0.40,0.70,1.10,0.40], Turmeric:[0.50,0.90,1.10,0.70], Groundnut:[0.40,0.70,1.05,0.60],
+  Watermelon:[0.40,0.75,1.00,0.75], Chickpea:[0.40,0.70,1.05,0.30], Sunflower:[0.35,0.75,1.15,0.55],
+  Moong:[0.40,0.70,1.00,0.45], Potato:[0.50,0.75,1.15,0.75], Mustard:[0.35,0.65,1.05,0.40],
+};
+const STAGE_IDX = { Germination:0, Vegetative:1, Flowering:2, 'Pod/Fruit Fill':2, Maturity:3 };
+const METHOD_EFF = { Drip:0.90, Sprinkler:0.78, Flood:0.55, Furrow:0.62 };
+const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function computeETo(temp, hum) {
+  return Math.round(0.0023*(temp+17.8)*Math.sqrt(Math.max(temp-10,1))*(1-hum/200)*100)/100;
+}
+
+function computeDay(crop, stage, field, moisture, temp, hum, rainfall, method, offset) {
+  const now = new Date(); now.setDate(now.getDate()+offset);
+  const dayName = DAYS[now.getDay()];
+  const dateStr = `${MONTHS[now.getMonth()]} ${now.getDate()}`;
+  const depletion = 1.8+(temp-25)*0.1;
+  const rainToday = offset===2 ? rainfall : (offset===6 ? rainfall*0.4 : 0);
+  const soilNow = moisture - (offset*depletion) + (rainToday*0.35);
+  const needsWater = soilNow < 45 && rainToday < 10;
+  const kc_vals = CROP_KC[crop] || [0.5,0.8,1.1,0.55];
+  const si = STAGE_IDX[stage] ?? 1;
+  const kc = kc_vals[Math.min(si, kc_vals.length-1)];
+  const eto = computeETo(temp, hum);
+  const etc = Math.round(eto*kc*100)/100;
+  const eff = METHOD_EFF[method] || 0.75;
+  const raw = Math.max(0, Math.round((50-soilNow)*0.9+etc*2));
+  const gross = needsWater ? Math.round(raw/eff) : 0;
+  let reason;
+  if (!needsWater && rainToday>=10) reason = `Rain ${Math.round(rainToday)}mm — skip`;
+  else if (!needsWater && soilNow>=50) reason = 'Moisture adequate';
+  else if (!needsWater) reason = 'Rest day';
+  else reason = offset===1 ? 'Below 45% threshold' : offset===3 ? `ETc ${etc}mm/day demand` : 'Scheduled deficit';
+  return { day:dayName, date:dateStr, irrigate:needsWater, amount_mm:gross, method: needsWater?method:'—', best_time: temp>32?'6:00 AM':method==='Drip'?'6:30 AM':'7:00 AM', eto, etc, kc, rain_mm:Math.round(rainToday*10)/10, reason };
+}
+
+async function generatePlan() {
+  const crop     = document.getElementById('inp-crop').value;
+  const stage    = document.getElementById('inp-stage').value;
+  const field    = parseFloat(document.getElementById('inp-field').value);
+  const method   = document.getElementById('inp-method').value;
+  const moisture = parseFloat(document.getElementById('inp-moisture').value);
+  const temp     = parseFloat(document.getElementById('inp-temp').value);
+  const hum      = parseFloat(document.getElementById('inp-hum').value);
+  const rainfall = parseFloat(document.getElementById('inp-rain').value);
+
+  const status = document.getElementById('planStatus');
+  status.innerHTML = '<span style="color:var(--teal);">⟳ Computing FAO-56 schedule…</span>';
+
+  let schedule = null, summary = null;
+
+  try {
+    const res = await fetch(`${API}/api/irrigation-plan`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ crop, growth_stage:stage, field_size:field, soil_moisture:moisture, temperature:temp, humidity:hum, rainfall, method })
+    });
+    if (res.ok) {
+      const d = await res.json();
+      schedule = d.schedule;
+      summary  = d.summary;
+    }
+  } catch(e) {}
+
+  if (!schedule) {
+    schedule = Array.from({length:7}, (_,i) => computeDay(crop,stage,field,moisture,temp,hum,rainfall,method,i));
+    const irrDays  = schedule.filter(d => d.irrigate);
+    const totalMm  = schedule.reduce((s,d) => s+d.amount_mm, 0);
+    const floodEq  = Math.round(totalMm*1.45);
+    const savings  = Math.round((1-totalMm/Math.max(floodEq,1))*100);
+    const totalL   = Math.round(totalMm*field*404.7/10);
+    summary = { total_irrigation_days:irrDays.length, total_water_mm:totalMm, total_liters:totalL, flood_equivalent_mm:floodEq, water_savings_percent:savings, avg_eto_mm_day: Math.round(schedule.reduce((s,d)=>s+d.eto,0)/7*100)/100 };
+  }
+
+  status.innerHTML = `<span style="color:var(--green);">✓ Plan generated — ${summary.total_irrigation_days} irrigation days</span>`;
+  renderPlan(schedule, summary, crop, stage, method, field);
+}
+
+function renderPlan(schedule, sum, crop, stage, method, field) {
+  document.getElementById('resultsSection').style.display = '';
+
+  // Summary cards
+  document.getElementById('summaryCards').innerHTML = [
+    { icon:'💧', val:sum.total_water_mm+'mm', label:'Total Water', color:'var(--blue)' },
+    { icon:'📅', val:sum.total_irrigation_days+' days', label:'Irrigation Days', color:'var(--green)' },
+    { icon:'🪣', val:(sum.total_liters/1000).toFixed(1)+'kL', label:'Total Volume', color:'var(--teal)' },
+    { icon:'💰', val:sum.water_savings_percent+'%', label:'Water Saved vs Flood', color:'var(--amber)' },
+    { icon:'☁️', val:sum.avg_eto_mm_day+'mm', label:'Avg ETo/day', color:'var(--violet)' },
+  ].map(c => `
+    <div class="card" style="text-align:center;">
+      <div style="font-size:26px;margin-bottom:8px;">${c.icon}</div>
+      <div style="font-family:var(--font-display);font-size:22px;font-weight:800;color:${c.color};">${c.val}</div>
+      <div style="font-size:10px;color:var(--text2);margin-top:5px;font-family:var(--font-mono);">${c.label}</div>
+    </div>
+  `).join('');
+
+  // 7-day cards
+  document.getElementById('schedGrid').innerHTML = schedule.map(d => {
+    const cls = d.rain_mm>5 ? 'rain' : d.irrigate ? 'active' : '';
+    const icon = d.rain_mm>5 ? '🌧️' : d.irrigate ? '💧' : '✓';
+    const valColor = d.irrigate ? 'var(--blue)' : 'var(--green)';
+    return `
+      <div class="sched-card ${cls}">
+        <div class="sched-day">${d.day.toUpperCase()}</div>
+        <div class="sched-date">${d.date}</div>
+        <div class="sched-icon">${icon}</div>
+        <div class="sched-mm" style="color:${valColor};">${d.irrigate ? d.amount_mm+'mm' : 'Skip'}</div>
+        <div class="sched-method">${d.method}</div>
+        ${d.irrigate ? `<div style="font-family:var(--font-mono);font-size:8px;color:var(--muted);margin-top:4px;">${d.best_time}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  // Table
+  const thead = `<thead><tr>${['Day','Date','Action','Amount','Method','Time','Kc','ETo','ETc','Rain','Reason'].map(h=>
+    `<th style="text-align:left;padding:8px 10px;font-family:var(--font-mono);font-size:9px;letter-spacing:1px;color:var(--muted);border-bottom:1px solid var(--border);">${h}</th>`
+  ).join('')}</tr></thead>`;
+  const tbody = `<tbody>${schedule.map(d => {
+    const c = d.irrigate ? 'color:#93c5fd;' : 'color:var(--text2);';
+    return `<tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+      <td style="padding:8px 10px;font-family:var(--font-mono);font-size:11px;${c}">${d.day}</td>
+      <td style="padding:8px 10px;font-size:11px;color:var(--text2);">${d.date}</td>
+      <td style="padding:8px 10px;font-size:11px;">${d.irrigate?'<span style="color:#93c5fd;">💧 Irrigate</span>':'<span style="color:var(--green);">✓ Rest</span>'}</td>
+      <td style="padding:8px 10px;font-family:var(--font-mono);font-size:11px;color:var(--blue);">${d.amount_mm?d.amount_mm+'mm':'—'}</td>
+      <td style="padding:8px 10px;font-size:11px;color:var(--text2);">${d.method}</td>
+      <td style="padding:8px 10px;font-family:var(--font-mono);font-size:11px;color:var(--text2);">${d.best_time}</td>
+      <td style="padding:8px 10px;font-family:var(--font-mono);font-size:11px;color:var(--violet);">${d.kc}</td>
+      <td style="padding:8px 10px;font-family:var(--font-mono);font-size:11px;color:var(--teal);">${d.eto}</td>
+      <td style="padding:8px 10px;font-family:var(--font-mono);font-size:11px;color:var(--teal);">${d.etc}</td>
+      <td style="padding:8px 10px;font-family:var(--font-mono);font-size:11px;color:var(--blue);">${d.rain_mm?d.rain_mm+'mm':'—'}</td>
+      <td style="padding:8px 10px;font-size:11px;color:var(--text2);">${d.reason}</td>
+    </tr>`;
+  }).join('')}</tbody>`;
+  document.getElementById('schedTable').innerHTML = thead+tbody;
+
+  // ETo bar chart
+  const maxEtc = Math.max(...schedule.map(d=>d.etc), 1);
+  document.getElementById('etChart').innerHTML = schedule.map(d => {
+    const h = Math.round((d.etc/maxEtc)*80);
+    return `
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--teal);">${d.etc}</div>
+        <div style="width:100%;height:${h}px;background:linear-gradient(to top,rgba(45,212,191,0.4),rgba(45,212,191,0.15));border-radius:4px 4px 0 0;min-height:4px;"></div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);">${d.day}</div>
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('resultsSection').scrollIntoView({behavior:'smooth',block:'start'});
+}
+</script>
+</body>
+</html>

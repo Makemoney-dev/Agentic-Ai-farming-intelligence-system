@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AgriMind AI — Crop Insights</title>
+<link rel="stylesheet" href="/public/style.css"/>
+</head>
+<body>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:14px;">
+    <div style="font-size:26px;">🌾</div>
+    <div>
+      <div class="logo">Agri<em>Mind</em> AI</div>
+      <div class="topbar-sub">CROP RECOMMENDATION ENGINE</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="tb-meta">📍 Pune, Maharashtra</div>
+    <div class="pill"><span class="blink-dot"></span>AI READY</div>
+  </div>
+</div>
+
+<nav class="sidenav">
+  <a href="/public/index.html"      class="nav-icon">🏠<span class="tooltip">Dashboard</span></a>
+  <a href="/public/crops.html"      class="nav-icon active">🌾<span class="tooltip">Crop Insights</span></a>
+  <a href="/public/irrigation.html" class="nav-icon">💧<span class="tooltip">Irrigation</span></a>
+  <a href="/public/alerts.html"     class="nav-icon">⚠️<span class="tooltip">Risk Alerts</span></a>
+  <a href="javascript:void(0)" class="nav-icon" onclick="toggleAgriChat()" title="AI Advisor">
+    <span class="tooltip">AI Advisor</span>
+    <span style="font-size: 20px;">🤖</span>
+  </a>
+</nav>
+
+<div class="wrap">
+
+  <!-- FORM -->
+  <div class="sec-label fade1">FARM INPUT PARAMETERS</div>
+  <div class="card fade1">
+    <div class="form-grid" id="formGrid">
+
+      <div>
+        <label class="form-label">📍 Location</label>
+        <input class="form-input" id="inp-location" value="Pune, Maharashtra"/>
+      </div>
+
+      <div>
+        <label class="form-label">🌦 Season</label>
+        <select class="form-input" id="inp-season">
+          <option value="Kharif">Kharif (Jun–Oct)</option>
+          <option value="Rabi">Rabi (Nov–Mar)</option>
+          <option value="Zaid">Zaid (Mar–Jun)</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label">📐 Field Size (acres)</label>
+        <input class="form-input" id="inp-field" value="5.2" type="number" min="0.1" step="0.1"/>
+      </div>
+
+      <div>
+        <label class="form-label">🪨 Soil Type</label>
+        <select class="form-input" id="inp-soil">
+          <option>Black Cotton</option>
+          <option>Alluvial</option>
+          <option>Red Laterite</option>
+          <option>Sandy Loam</option>
+          <option>Clay</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label">⚗️ Soil pH — <span class="slider-val" id="ph-display">6.4</span></label>
+        <input type="range" id="inp-ph" min="4" max="9" step="0.1" value="6.4"
+          oninput="document.getElementById('ph-display').textContent=parseFloat(this.value).toFixed(1)"/>
+      </div>
+
+      <div>
+        <label class="form-label">🌡️ Temperature — <span class="slider-val" id="temp-display">28</span>°C</label>
+        <input type="range" id="inp-temp" min="10" max="45" value="28"
+          oninput="document.getElementById('temp-display').textContent=this.value"/>
+      </div>
+
+      <div>
+        <label class="form-label">💧 Humidity — <span class="slider-val" id="hum-display">65</span>%</label>
+        <input type="range" id="inp-humidity" min="20" max="100" value="65"
+          oninput="document.getElementById('hum-display').textContent=this.value"/>
+      </div>
+
+      <div>
+        <label class="form-label">🌱 Nitrogen (N) — <span class="slider-val" id="n-display">38</span> kg/ha</label>
+        <input type="range" id="inp-n" min="0" max="100" value="38"
+          oninput="document.getElementById('n-display').textContent=this.value"/>
+      </div>
+
+      <div>
+        <label class="form-label">🔵 Phosphorus (P) — <span class="slider-val" id="p-display">22</span> kg/ha</label>
+        <input type="range" id="inp-p" min="0" max="100" value="22"
+          oninput="document.getElementById('p-display').textContent=this.value"/>
+      </div>
+
+      <div>
+        <label class="form-label">🟡 Potassium (K) — <span class="slider-val" id="k-display">45</span> kg/ha</label>
+        <input type="range" id="inp-k" min="0" max="100" value="45"
+          oninput="document.getElementById('k-display').textContent=this.value"/>
+      </div>
+
+    </div>
+    <div style="margin-top:22px;display:flex;gap:12px;align-items:center;">
+      <button class="btn-primary" onclick="runAnalysis()">
+        <span>🧠</span> Analyze & Recommend
+      </button>
+      <div id="analyzeStatus" style="font-family:var(--font-mono);font-size:11px;color:var(--text2);"></div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="resultsSection" style="display:none;">
+    <div class="sec-label fade2">AI CROP RECOMMENDATIONS</div>
+    <div id="cropResults"></div>
+
+    <div class="sec-label">MARKET & PROFITABILITY OVERVIEW</div>
+    <div id="marketOverview"></div>
+  </div>
+
+</div>
+
+<script>
+const API = 'http://127.0.0.1:8000';
+
+// ── Crop DB (client-side fallback) ──
+const CROP_DB = {
+  Kharif: [
+    { crop:"Soybean",  icon:"🫘", ph:[6.0,7.5], temp:[20,35], hum:[55,90], n_min:30, days:100, water:"Medium", price:"₹3,800/q", profit:"High",      risk:"Low",    base:88, soil:{Black:6,Alluvial:5,Red:3,Sandy:4,Clay:4} },
+    { crop:"Cotton",   icon:"🌿", ph:[5.8,8.0], temp:[25,40], hum:[50,80], n_min:25, days:165, water:"Medium", price:"₹6,500/q", profit:"Very High",  risk:"Medium", base:84, soil:{Black:7,Alluvial:4,Red:3,Sandy:3,Clay:5} },
+    { crop:"Maize",    icon:"🌽", ph:[5.8,7.0], temp:[18,32], hum:[50,80], n_min:20, days:90,  water:"Medium", price:"₹1,900/q", profit:"Medium",     risk:"Low",    base:78, soil:{Black:4,Alluvial:7,Red:5,Sandy:6,Clay:3} },
+    { crop:"Turmeric", icon:"🟡", ph:[5.5,7.0], temp:[20,35], hum:[65,90], n_min:15, days:270, water:"High",   price:"₹12,000/q",profit:"Very High",  risk:"Medium", base:72, soil:{Black:3,Alluvial:5,Red:6,Sandy:7,Clay:3} },
+    { crop:"Groundnut",icon:"🥜", ph:[6.0,7.0], temp:[22,35], hum:[45,75], n_min:15, days:120, water:"Low",   price:"₹5,200/q", profit:"High",       risk:"Low",    base:75, soil:{Black:3,Alluvial:6,Red:7,Sandy:8,Clay:2} },
+  ],
+  Rabi: [
+    { crop:"Wheat",    icon:"🌾", ph:[6.0,7.5], temp:[10,25], hum:[40,70], n_min:30, days:120, water:"Medium", price:"₹2,150/q", profit:"High",       risk:"Low",    base:90, soil:{Black:5,Alluvial:8,Red:3,Sandy:6,Clay:5} },
+    { crop:"Chickpea", icon:"🟤", ph:[5.5,7.0], temp:[15,30], hum:[30,60], n_min:10, days:100, water:"Low",    price:"₹5,440/q", profit:"High",       risk:"Low",    base:82, soil:{Black:7,Alluvial:5,Red:4,Sandy:6,Clay:4} },
+    { crop:"Mustard",  icon:"🌻", ph:[5.8,7.5], temp:[10,28], hum:[35,65], n_min:20, days:110, water:"Low",    price:"₹5,650/q", profit:"High",       risk:"Low",    base:80, soil:{Black:4,Alluvial:7,Red:5,Sandy:7,Clay:3} },
+    { crop:"Potato",   icon:"🥔", ph:[5.0,6.5], temp:[10,25], hum:[50,80], n_min:25, days:90,  water:"High",   price:"₹1,500/q", profit:"Medium",     risk:"High",   base:76, soil:{Black:3,Alluvial:7,Red:5,Sandy:8,Clay:2} },
+  ],
+  Zaid: [
+    { crop:"Watermelon",icon:"🍉",ph:[6.0,7.0], temp:[25,40], hum:[40,70], n_min:15, days:75,  water:"Medium", price:"₹1,200/q", profit:"High",       risk:"Medium", base:86, soil:{Black:3,Alluvial:7,Red:5,Sandy:8,Clay:2} },
+    { crop:"Moong",    icon:"🟢", ph:[6.0,7.5], temp:[25,40], hum:[40,75], n_min:10, days:65,  water:"Low",    price:"₹7,755/q", profit:"Very High",  risk:"Low",    base:78, soil:{Black:5,Alluvial:7,Red:6,Sandy:7,Clay:4} },
+    { crop:"Sunflower",icon:"🌸", ph:[6.0,7.5], temp:[20,35], hum:[40,70], n_min:20, days:90,  water:"Medium", price:"₹6,400/q", profit:"High",       risk:"Medium", base:74, soil:{Black:5,Alluvial:7,Red:5,Sandy:6,Clay:4} },
+  ],
+};
+
+function soilKey(s) {
+  if (s.includes('Black')) return 'Black';
+  if (s.includes('Alluvial')) return 'Alluvial';
+  if (s.includes('Red')) return 'Red';
+  if (s.includes('Sandy')) return 'Sandy';
+  return 'Clay';
+}
+
+function scoreLocal(crop, ph, temp, hum, n, soil) {
+  let score = crop.base;
+  const phMid = (crop.ph[0]+crop.ph[1])/2;
+  score += (ph>=crop.ph[0]&&ph<=crop.ph[1]) ? 5 : -Math.abs(ph-phMid)*2.5;
+  score += (temp>=crop.temp[0]&&temp<=crop.temp[1]) ? 4 : -4;
+  score += (hum>=crop.hum[0]&&hum<=crop.hum[1]) ? 3 : -2;
+  score += n>=crop.n_min ? 3 : -(crop.n_min-n)*0.15;
+  score += crop.soil[soilKey(soil)] || 3;
+  return Math.min(99, Math.max(40, Math.round(score)));
+}
+
+function getReason(crop, ph, temp, n, soil) {
+  const reasons = [];
+  if (ph>=crop.ph[0]&&ph<=crop.ph[1]) reasons.push(`pH ${ph} is ideal`);
+  if (temp>=crop.temp[0]&&temp<=crop.temp[1]) reasons.push(`${temp}°C suits growth`);
+  if (n>=crop.n_min) reasons.push(`nitrogen adequate`);
+  const fit = crop.soil[soilKey(soil)] || 3;
+  if (fit >= 6) reasons.push(`${soil} soil is excellent`);
+  return reasons.slice(0,2).join('; ') || 'manageable conditions with good practices';
+}
+
+async function runAnalysis() {
+  const season   = document.getElementById('inp-season').value;
+  const location = document.getElementById('inp-location').value;
+  const field    = parseFloat(document.getElementById('inp-field').value);
+  const soil     = document.getElementById('inp-soil').value;
+  const ph       = parseFloat(document.getElementById('inp-ph').value);
+  const temp     = parseFloat(document.getElementById('inp-temp').value);
+  const hum      = parseFloat(document.getElementById('inp-humidity').value);
+  const n        = parseFloat(document.getElementById('inp-n').value);
+  const p        = parseFloat(document.getElementById('inp-p').value);
+  const k        = parseFloat(document.getElementById('inp-k').value);
+
+  const status = document.getElementById('analyzeStatus');
+  status.innerHTML = '<span style="color:var(--teal);">⟳ Analyzing…</span>';
+
+  let recs = null;
+  try {
+    const res = await fetch(`${API}/api/crop-recommendation`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({location,season,soil_ph:ph,nitrogen:n,phosphorus:p,potassium:k,temperature:temp,humidity:hum,soil_type:soil,field_size:field})
+    });
+    if (res.ok) {
+      const data = await res.json();
+      recs = data.recommendations;
+    }
+  } catch(e) {}
+
+  // Fallback to client-side scoring
+  if (!recs) {
+    const crops = CROP_DB[season] || CROP_DB.Kharif;
+    recs = crops.map(c => ({
+      crop: c.crop, icon: c.icon,
+      suitability: scoreLocal(c, ph, temp, hum, n, soil),
+      reason: getReason(c, ph, temp, n, soil),
+      growth_days: c.days, water_need: c.water,
+      market_price: c.price, profit_potential: c.profit, risk_level: c.risk,
+    })).sort((a,b) => b.suitability - a.suitability).slice(0,4);
+  }
+
+  status.innerHTML = `<span style="color:var(--green);">✓ ${recs.length} crops analyzed for ${season}</span>`;
+  renderResults(recs, season, location, soil, field);
+}
+
+const SCORE_COLORS = { high:'#4ade80', med:'#fbbf24', low:'#f87171' };
+const PROFIT_COLORS = { 'Very High':'#4ade80','High':'#4ade80','Medium':'#fbbf24','Low':'#f87171' };
+const RISK_COLORS   = { 'Low':'#4ade80','Medium':'#fbbf24','High':'#f87171' };
+const WATER_ICONS   = { 'Low':'💧','Medium':'💧💧','High':'💧💧💧' };
+
+function renderResults(recs, season, location, soil, field) {
+  const rs = document.getElementById('resultsSection');
+  rs.style.display = '';
+
+  document.getElementById('cropResults').innerHTML = `
+    <div class="crop-grid fade2">
+      ${recs.map((r, i) => {
+        const sc = r.suitability >= 85 ? SCORE_COLORS.high : r.suitability >= 70 ? SCORE_COLORS.med : SCORE_COLORS.low;
+        const topBadge = i === 0 ? `<div style="position:absolute;top:14px;right:14px;background:rgba(74,222,128,0.15);border:1px solid rgba(74,222,128,0.3);color:var(--green);font-family:var(--font-mono);font-size:8px;letter-spacing:1.5px;padding:3px 10px;border-radius:10px;">TOP PICK</div>` : '';
+        return `
+          <div class="crop-card">
+            ${topBadge}
+            <div class="crop-icon">${r.icon}</div>
+            <div class="crop-name">${r.crop}</div>
+            <div class="crop-reason">${r.reason.charAt(0).toUpperCase()+r.reason.slice(1)}.</div>
+            <div class="crop-meta">
+              <span class="crop-tag">⏱ ${r.growth_days} days</span>
+              <span class="crop-tag">${WATER_ICONS[r.water_need]||'💧'} ${r.water_need} water</span>
+              <span class="crop-tag" style="color:${PROFIT_COLORS[r.profit_potential]||'#fbbf24'};">💰 ${r.profit_potential}</span>
+              <span class="crop-tag" style="color:${RISK_COLORS[r.risk_level]||'#fbbf24'};">⚡ ${r.risk_level} risk</span>
+            </div>
+            <div class="suitability-bar">
+              <div class="suit-label">
+                <span>Suitability Score</span>
+                <span style="color:${sc};font-family:var(--font-display);font-size:18px;font-weight:700;">${r.suitability}%</span>
+              </div>
+              <div class="bar-track" style="height:7px;">
+                <div class="bar-fill" style="width:${r.suitability}%;background:linear-gradient(90deg,${sc}80,${sc});"></div>
+              </div>
+            </div>
+            <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-family:var(--font-mono);font-size:11px;color:var(--text2);">Market Price</span>
+              <span style="font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--amber);">${r.market_price}</span>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+
+  // Market overview
+  document.getElementById('marketOverview').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;" class="fade3">
+      ${recs.map(r => `
+        <div class="card" style="text-align:center;">
+          <div style="font-size:28px;margin-bottom:8px;">${r.icon}</div>
+          <div style="font-family:var(--font-display);font-weight:700;margin-bottom:4px;">${r.crop}</div>
+          <div style="font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--amber);">${r.market_price}</div>
+          <div style="font-size:10px;color:var(--text2);margin-top:6px;font-family:var(--font-mono);">EST. PROFIT: <span style="color:${PROFIT_COLORS[r.profit_potential]}">${r.profit_potential}</span></div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px;font-family:var(--font-mono);">Field: ${parseFloat(document.getElementById('inp-field').value)} acres</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  rs.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+</script>
+</body>
+</html>

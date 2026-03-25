@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AgriMind AI — Risk Alerts</title>
+<link rel="stylesheet" href="/public/style.css">
+</head>
+<body>
+
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:14px;">
+    <div style="font-size:26px;animation:blink-pulse 2s infinite;">⚠️</div>
+    <div>
+      <div class="logo">Agri<em>Mind</em> AI</div>
+      <div class="topbar-sub">RISK ALERT & EARLY WARNING SYSTEM</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="tb-meta">📍 Pune, Maharashtra</div>
+    <div class="pill warn"><span class="blink-dot"></span>MONITORING</div>
+  </div>
+</div>
+
+<nav class="sidenav">
+  <a href="/public/index.html"      class="nav-icon">🏠<span class="tooltip">Dashboard</span></a>
+  <a href="/public/crops.html"      class="nav-icon">🌾<span class="tooltip">Crop Insights</span></a>
+  <a href="/public/irrigation.html" class="nav-icon">💧<span class="tooltip">Irrigation</span></a>
+  <a href="/public/alerts.html"     class="nav-icon active">⚠️<span class="tooltip">Risk Alerts</span></a>
+  <a href="javascript:void(0)" class="nav-icon" onclick="toggleAgriChat()" title="AI Advisor">
+    <span class="tooltip">AI Advisor</span>
+    <span style="font-size: 20px;">🤖</span>
+</nav>
+
+<div class="wrap">
+
+  <!-- FORM -->
+  <div class="sec-label fade1">FARM CONDITION INPUTS — SCAN FOR RISKS</div>
+  <div class="card fade1">
+    <div class="form-grid">
+
+      <div>
+        <label class="form-label">🌾 Crop Type</label>
+        <select class="form-input" id="inp-crop">
+          <option>Soybean</option><option>Cotton</option><option>Maize</option>
+          <option>Wheat</option><option>Turmeric</option><option>Groundnut</option>
+          <option>Watermelon</option><option>Chickpea</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label">🌦 Season</label>
+        <select class="form-input" id="inp-season">
+          <option>Kharif</option><option>Rabi</option><option>Zaid</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label">📅 Growth Stage</label>
+        <select class="form-input" id="inp-stage">
+          <option>Germination</option><option>Vegetative</option>
+          <option>Flowering</option><option>Pod/Fruit Fill</option><option>Maturity</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label">🌡️ Temperature — <span class="slider-val" id="temp-disp">28</span>°C</label>
+        <input type="range" id="inp-temp" min="5" max="50" value="28"
+          oninput="document.getElementById('temp-disp').textContent=this.value"/>
+      </div>
+
+      <div>
+        <label class="form-label">💧 Humidity — <span class="slider-val" id="hum-disp">65</span>%</label>
+        <input type="range" id="inp-hum" min="10" max="100" value="65"
+          oninput="document.getElementById('hum-disp').textContent=this.value"/>
+      </div>
+
+      <div>
+        <label class="form-label">🌱 Soil Moisture — <span class="slider-val" id="moist-disp">42</span>%</label>
+        <input type="range" id="inp-moist" min="0" max="100" value="42"
+          oninput="document.getElementById('moist-disp').textContent=this.value"/>
+      </div>
+
+      <div>
+        <label class="form-label">☀️ UV Index — <span class="slider-val" id="uv-disp">7</span></label>
+        <input type="range" id="inp-uv" min="0" max="11" step="0.5" value="7"
+          oninput="document.getElementById('uv-disp').textContent=this.value"/>
+      </div>
+
+      <div>
+        <label class="form-label">🌬️ Wind Speed — <span class="slider-val" id="wind-disp">14</span>km/h</label>
+        <input type="range" id="inp-wind" min="0" max="100" value="14"
+          oninput="document.getElementById('wind-disp').textContent=this.value"/>
+      </div>
+
+    </div>
+    <div style="margin-top:22px;display:flex;gap:12px;align-items:center;">
+      <button class="btn-primary" onclick="scanRisks()">
+        <span>🔍</span> Scan for Risks
+      </button>
+      <div id="scanStatus" style="font-family:var(--font-mono);font-size:11px;color:var(--text2);"></div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="resultsSection" style="display:none;">
+
+    <!-- Risk score -->
+    <div class="sec-label fade2">RISK ASSESSMENT OVERVIEW</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;" class="fade2" id="riskSummary"></div>
+
+    <!-- Filter tabs -->
+    <div class="sec-label fade3">ALERT DETAILS</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;" class="fade3" id="filterTabs"></div>
+
+    <!-- Alert list -->
+    <div id="alertList" class="fade3"></div>
+
+  </div>
+
+</div>
+
+<script>
+const API = 'http://127.0.0.1:8000';
+
+// ── Client-side risk evaluation ──
+function evaluateRisks(crop, season, stage, temp, hum, moist, uv, wind) {
+  const alerts = [];
+
+  if (hum>60 && temp>25) alerts.push({ type:'Pest', sev:'High', icon:'🦟', title:'Whitefly Infestation Risk', detail:`Humidity ${hum}% and temperature ${temp}°C create ideal whitefly breeding conditions.`, impact:'Leaf yellowing, honeydew secretion, yield loss up to 40% if uncontrolled.', action:'Apply neem oil solution (5ml/L) on leaf undersides within 48 hours. Deploy yellow sticky traps.', urgency:'Within 48 hours' });
+  if (temp>28 && hum>55 && (stage==='Flowering'||stage==='Pod/Fruit Fill')) alerts.push({ type:'Pest', sev:'High', icon:'🐛', title:'Pod/Stem Borer Outbreak Risk', detail:`High temperature ${temp}°C during ${stage} stage increases borer moth activity significantly.`, impact:'Direct pod feeding causes 30–50% yield loss. Entry point for secondary fungal infections.', action:'Install pheromone traps (5/acre). Apply Chlorantraniliprole 0.4ml/L during evening hours.', urgency:'Within 24 hours' });
+  if (temp>20 && temp<35 && hum>50) alerts.push({ type:'Pest', sev:'Medium', icon:'🪲', title:'Aphid Colony Risk', detail:`Temperature ${temp}°C and humidity ${hum}% are optimal for aphid establishment.`, impact:'Sap sucking weakens plants, transmits viral diseases. 15–25% yield loss.', action:'Spray Dimethoate 2ml/L or release Chrysoperla carnea biocontrol agents.', urgency:'Within 72 hours' });
+  if (hum>68 && temp>22) alerts.push({ type:'Disease', sev:'High', icon:'🍄', title:'Fungal Blight Early Warning', detail:`Humidity ${hum}% sustained above 68% with ${temp}°C triggers rapid fungal spore germination.`, impact:'Leaf defoliation, reduced photosynthesis, grain infection, aflatoxin risk.', action:'Apply Mancozeb 75% WP at 2g/L every 10 days. Improve air circulation.', urgency:'Within 48 hours' });
+  if (hum>70 && temp>=18 && temp<=28) alerts.push({ type:'Disease', sev:'Medium', icon:'🌿', title:'Downy Mildew Susceptibility', detail:`Cool ${temp}°C humid ${hum}% conditions favor downy mildew spore germination.`, impact:'White powdery coating, rapid defoliation, up to 30% yield loss.', action:'Apply Metalaxyl + Mancozeb (Ridomil Gold) 2.5g/L. Remove infected plant debris.', urgency:'Within 72 hours' });
+  if (temp>33 || uv>8) alerts.push({ type:'Weather', sev:'Medium', icon:'☀️', title:'Heat & UV Stress Alert', detail:`Temperature ${temp}°C and UV index ${uv} exceed safe thresholds.`, impact:'Pollen sterility at flowering, leaf scorch, 10–25% yield reduction.', action:'Schedule irrigation 6–8 AM. Apply kaolin clay spray (3%) to reflect sunlight.', urgency:'Today' });
+  if (moist<30) alerts.push({ type:'Weather', sev:'High', icon:'🌵', title:'Drought Stress — CRITICAL', detail:`Soil moisture at ${moist}% is critically low. Plants entering survival mode.`, impact:'Permanent wilting, aborted pods/flowers, yield loss 40–70% if prolonged.', action:'EMERGENCY IRRIGATION — Apply 30–40mm immediately. Apply anti-transpirant spray.', urgency:'IMMEDIATE' });
+  if (temp<8) alerts.push({ type:'Weather', sev:'High', icon:'❄️', title:'Frost Risk Alert', detail:`Temperature ${temp}°C with clear sky indicates frost risk tonight.`, impact:'Ice crystal formation causes cell rupture, leaf blackening, possible total crop loss.', action:'Apply overhead irrigation to form protective ice shell. Cover young plants with agro-net.', urgency:'IMMEDIATE — Tonight' });
+  if (wind>50) alerts.push({ type:'Weather', sev:'Medium', icon:'🌪️', title:'High Wind Damage Risk', detail:`Wind speed ${wind} km/h can cause lodging in tall crops and mechanical damage.`, impact:'Stem breakage, flower drop, difficulty in spraying. 15–30% yield loss.', action:'Provide windbreak barriers. Avoid spraying operations. Stake tall crops immediately.', urgency:'Before evening' });
+  if (moist>80) alerts.push({ type:'Soil', sev:'Medium', icon:'🌊', title:'Waterlogging Risk', detail:`Soil moisture at ${moist}% indicates near-saturation. Anaerobic conditions developing.`, impact:'Root rot, nutrient deficiency, increased disease susceptibility. 25–50% yield loss.', action:'Open drainage channels immediately. Apply Trichoderma viride to protect roots.', urgency:'Within 24 hours' });
+  if (temp<15) alerts.push({ type:'Soil', sev:'Low', icon:'⚗️', title:'Phosphorus Uptake Impaired', detail:`Temperature ${temp}°C reduces phosphorus solubility and root uptake efficiency significantly.`, impact:'Purple leaf discoloration, delayed maturity, reduced grain quality. 10–15% yield loss.', action:'Apply foliar KH₂PO₄ spray 0.5%. Use phosphate-solubilizing bacteria biofertilizer.', urgency:'Within 1 week' });
+  if (moist>70) alerts.push({ type:'Soil', sev:'Low', icon:'🌱', title:'Nitrogen Leaching Risk', detail:`Excess moisture ${moist}% causes nitrogen leaching in root zone.`, impact:'Yellowing of older leaves (chlorosis), 15–20% lower yield potential.', action:'Apply split urea dose 25 kg/acre. Use slow-release nitrogen fertilizers.', urgency:'Within 1 week' });
+
+  const order = { High:0, Medium:1, Low:2 };
+  alerts.sort((a,b) => order[a.sev]-order[b.sev]);
+  return alerts;
+}
+
+let allAlerts = [], activeFilter = 'All';
+
+async function scanRisks() {
+  const crop  = document.getElementById('inp-crop').value;
+  const season= document.getElementById('inp-season').value;
+  const stage = document.getElementById('inp-stage').value;
+  const temp  = parseFloat(document.getElementById('inp-temp').value);
+  const hum   = parseFloat(document.getElementById('inp-hum').value);
+  const moist = parseFloat(document.getElementById('inp-moist').value);
+  const uv    = parseFloat(document.getElementById('inp-uv').value);
+  const wind  = parseFloat(document.getElementById('inp-wind').value);
+
+  const status = document.getElementById('scanStatus');
+  status.innerHTML = '<span style="color:var(--amber);">⟳ Scanning 40+ risk vectors…</span>';
+
+  let alerts = null;
+  try {
+    const res = await fetch(`${API}/api/risk-alerts`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ crop, season, growth_stage:stage, temperature:temp, humidity:hum, soil_moisture:moist, uv_index:uv, wind_speed:wind })
+    });
+    if (res.ok) {
+      const d = await res.json();
+      alerts = d.alerts;
+    }
+  } catch(e) {}
+
+  if (!alerts) alerts = evaluateRisks(crop, season, stage, temp, hum, moist, uv, wind);
+
+  allAlerts = alerts;
+  activeFilter = 'All';
+
+  const high   = alerts.filter(a=>a.sev==='High').length;
+  const medium = alerts.filter(a=>a.sev==='Medium').length;
+  const low    = alerts.filter(a=>a.sev==='Low').length;
+  const score  = Math.min(99, high*28 + medium*14 + low*5);
+  const lvl    = score>60?'High':score>35?'Medium':'Low';
+  const lvlColor = lvl==='High'?'var(--red)':lvl==='Medium'?'var(--amber)':'var(--green)';
+
+  status.innerHTML = `<span style="color:var(--red);">${high > 0 ? '⚠️ '+high+' HIGH severity alert'+(high>1?'s':'')+' detected!' : '✓ No high severity alerts'}</span>`;
+
+  document.getElementById('resultsSection').style.display = '';
+
+  // Summary
+  document.getElementById('riskSummary').innerHTML = [
+    { icon:'📊', val:score, label:'Risk Score', color:lvlColor, extra:'/ 100' },
+    { icon:'🔴', val:high,   label:'High Severity', color:'var(--red)' },
+    { icon:'🟡', val:medium, label:'Medium Severity', color:'var(--amber)' },
+    { icon:'🟢', val:low,    label:'Low Severity', color:'var(--green)' },
+  ].map(c => `
+    <div class="card" style="text-align:center;">
+      <div style="font-size:26px;margin-bottom:8px;">${c.icon}</div>
+      <div style="font-family:var(--font-display);font-size:28px;font-weight:800;color:${c.color};letter-spacing:-1px;">${c.val}<span style="font-size:14px;color:var(--muted);">${c.extra||''}</span></div>
+      <div style="font-size:10px;color:var(--text2);margin-top:5px;font-family:var(--font-mono);">${c.label}</div>
+    </div>
+  `).join('');
+
+  // Filter tabs
+  const types = ['All', ...new Set(alerts.map(a=>a.type))];
+  document.getElementById('filterTabs').innerHTML = types.map(t => `
+    <button onclick="setFilter('${t}')" id="tab-${t}"
+      style="font-family:var(--font-mono);font-size:10px;letter-spacing:1px;padding:6px 16px;border-radius:20px;cursor:pointer;transition:all .2s;border:1px solid;
+      ${t===activeFilter ? 'background:rgba(74,222,128,0.12);border-color:rgba(74,222,128,0.3);color:var(--green);' : 'background:var(--surface);border-color:var(--border);color:var(--text2);'}">
+      ${t} ${t==='All'?`(${alerts.length})`:alerts.filter(a=>a.type===t).length>0?`(${alerts.filter(a=>a.type===t).length})`:''}
+    </button>
+  `).join('');
+
+  renderAlerts();
+  document.getElementById('resultsSection').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function setFilter(f) {
+  activeFilter = f;
+  // re-render tabs
+  const types = ['All', ...new Set(allAlerts.map(a=>a.type))];
+  document.getElementById('filterTabs').innerHTML = types.map(t => `
+    <button onclick="setFilter('${t}')" id="tab-${t}"
+      style="font-family:var(--font-mono);font-size:10px;letter-spacing:1px;padding:6px 16px;border-radius:20px;cursor:pointer;transition:all .2s;border:1px solid;
+      ${t===f ? 'background:rgba(74,222,128,0.12);border-color:rgba(74,222,128,0.3);color:var(--green);' : 'background:var(--surface);border-color:var(--border);color:var(--text2);'}">
+      ${t} ${t==='All'?`(${allAlerts.length})`:allAlerts.filter(a=>a.type===t).length>0?`(${allAlerts.filter(a=>a.type===t).length})`:''}
+    </button>
+  `).join('');
+  renderAlerts();
+}
+
+const TYPE_COLORS = { Pest:'rgba(167,139,250,0.15)', Disease:'rgba(248,113,113,0.1)', Weather:'rgba(251,191,36,0.1)', Soil:'rgba(74,222,128,0.1)' };
+const TYPE_TEXT   = { Pest:'#a78bfa', Disease:'#f87171', Weather:'#fbbf24', Soil:'#4ade80' };
+const URGENCY_CLR = { 'IMMEDIATE':'#f87171','IMMEDIATE — Tonight':'#f87171','Within 24 hours':'#fb923c','Today':'#fbbf24','Within 48 hours':'#fbbf24','Within 72 hours':'#a3e635','Within 1 week':'#4ade80' };
+
+function renderAlerts() {
+  const filtered = activeFilter==='All' ? allAlerts : allAlerts.filter(a=>a.type===activeFilter);
+  if (!filtered.length) {
+    document.getElementById('alertList').innerHTML = `
+      <div class="card" style="text-align:center;padding:48px;">
+        <div style="font-size:48px;margin-bottom:12px;">✅</div>
+        <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--green);">No ${activeFilter==='All'?'':activeFilter+' '}alerts detected</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:6px;">Current conditions are within safe parameters.</div>
+      </div>
+    `;
+    return;
+  }
+
+  document.getElementById('alertList').innerHTML = filtered.map(a => {
+    const sevCls = a.sev.toLowerCase();
+    const urgColor = URGENCY_CLR[a.urgency] || 'var(--text2)';
+    return `
+      <div class="alert-card ${sevCls}">
+        <div class="alert-header">
+          <span style="font-size:24px;">${a.icon}</span>
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
+              <span class="alert-type-badge" style="background:${TYPE_COLORS[a.type]||'rgba(255,255,255,0.05)'};color:${TYPE_TEXT[a.type]||'var(--text2)'};">${a.type.toUpperCase()}</span>
+              <span class="alert-sev sev-${sevCls}">${a.sev.toUpperCase()}</span>
+            </div>
+            <div class="alert-title">${a.title}</div>
+          </div>
+        </div>
+        <div class="alert-body">${a.detail}</div>
+        <div style="margin-bottom:10px;">
+          <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;color:var(--muted);margin-bottom:5px;">CROP IMPACT</div>
+          <div style="font-size:12px;color:var(--text2);">${a.impact}</div>
+        </div>
+        <div class="alert-action">
+          <strong>RECOMMENDED ACTION</strong>
+          ${a.action}
+        </div>
+        <div>
+          <span class="urgency-chip" style="background:${urgColor}20;color:${urgColor};border:1px solid ${urgColor}40;">
+            ⏱ ${a.urgency}
+          </span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+</script>
+</body>
+</html>

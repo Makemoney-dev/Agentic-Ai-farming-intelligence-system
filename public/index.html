@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AgriMind AI — Dashboard</title>
+<link rel="stylesheet" href="/public/style.css">
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:14px;">
+    <div style="font-size:28px;line-height:1;">🌿</div>
+    <div>
+      <div class="logo">Agri<em>Mind</em> AI</div>
+      <div class="topbar-sub">FARM INTELLIGENCE DASHBOARD</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="tb-meta">📍 Pune, Maharashtra</div>
+    <div class="tb-meta">🌦 Kharif 2025</div>
+    <div class="pill"><span class="blink-dot"></span>LIVE</div>
+  </div>
+</div>
+
+<!-- SIDEBAR NAV -->
+<nav class="sidenav">
+  <a href="/public/index.html" class="nav-icon active" title="">🏠<span class="tooltip">Dashboard</span></a>
+  <a href="/public/crops.html" class="nav-icon" title="">🌾<span class="tooltip">Crop Insights</span></a>
+  <a href="/public/irrigation.html" class="nav-icon" title="">💧<span class="tooltip">Irrigation</span></a>
+  <a href="/public/alerts.html" class="nav-icon" title="">⚠️<span class="tooltip">Risk Alerts</span></a>
+  <a href="javascript:void(0)" class="nav-icon" onclick="toggleAgriChat()" title="AI Advisor">
+    <span class="tooltip">AI Advisor</span>
+    <span style="font-size: 20px;">🤖</span>
+  </a>
+</nav>
+
+<!-- MAIN -->
+<div class="wrap">
+
+  <!-- SENSOR READINGS -->
+  <div class="sec-label fade1">LIVE SENSOR READINGS <span style="color:var(--green);margin-left:6px;">↻ 30s</span></div>
+  <div class="sensor-grid fade1" id="sensorGrid"></div>
+
+  <!-- SUMMARY -->
+  <div class="sec-label fade2">FARM INTELLIGENCE SUMMARY</div>
+  <div class="summary-strip fade2">
+    <div class="sum-item">
+      <div class="sum-val" id="sum-crop">Soybean</div>
+      <div class="sum-lbl">🌾 Top Recommended Crop</div>
+    </div>
+    <div class="sum-div"></div>
+    <div class="sum-item">
+      <div class="sum-val" id="sum-irr">Tuesday</div>
+      <div class="sum-lbl">💧 Next Irrigation Day</div>
+    </div>
+    <div class="sum-div"></div>
+    <div class="sum-item">
+      <div class="sum-val" id="sum-alerts" style="color:var(--red);">4</div>
+      <div class="sum-lbl">⚠️ Active Risk Alerts</div>
+    </div>
+    <div class="sum-div"></div>
+    <div class="sum-item">
+      <div class="sum-val" id="sum-health">78%</div>
+      <div class="sum-lbl">📊 Field Health Score</div>
+    </div>
+    <div class="sum-div"></div>
+    <div class="sum-item">
+      <div class="sum-val" style="color:var(--amber);">₹3,800</div>
+      <div class="sum-lbl">📈 Best Market Price /q</div>
+    </div>
+  </div>
+
+  <!-- NPK -->
+  <div class="sec-label fade3">SOIL NUTRIENT ANALYSIS — NPK</div>
+  <div class="npk-grid fade3" id="npkGrid"></div>
+
+  <!-- BOTTOM GRID -->
+  <div class="sec-label fade4">FARM DETAILS · SYSTEM STATUS · ACTIVE ALERTS</div>
+  <div class="bottom-grid fade4">
+    <div class="card">
+      <div class="card-head">📋 FARM DETAILS</div>
+      <div id="farmDetails"></div>
+    </div>
+    <div class="card">
+      <div class="card-head">⚙️ SYSTEM STATUS</div>
+      <div id="sysStatus"></div>
+    </div>
+    <div class="card">
+      <div class="card-head">⚠️ ACTIVE ALERTS</div>
+      <div id="alertsMini"></div>
+    </div>
+  </div>
+
+  <!-- WEATHER + ACTIONS -->
+  <div class="sec-label fade5">7-DAY WEATHER OUTLOOK · QUICK ACTIONS</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" class="fade5">
+    <div class="card">
+      <div class="card-head">🌤 WEEKLY FORECAST</div>
+      <div id="weatherGrid"></div>
+    </div>
+    <div class="card">
+      <div class="card-head">🚀 QUICK ACTIONS</div>
+      <div style="display:flex;flex-direction:column;gap:8px;" id="quickActions"></div>
+    </div>
+  </div>
+
+  <div class="refresh-line fade6">
+    Last updated: <span id="lastUpdated">—</span> &nbsp;·&nbsp; Next refresh in <span id="countdown">30</span>s
+  </div>
+</div>
+<div id="agri-chat-window" style="display: none; position: fixed; bottom: 20px; left: 85px; width: 320px; height: 500px; background: rgba(15, 15, 15, 0.98); backdrop-filter: blur(15px); border: 1px solid #2ecc71; border-radius: 15px; flex-direction: column; z-index: 9999; box-shadow: 0 10px 40px rgba(0,0,0,0.8); overflow: hidden;"> 
+    <div style="background: #2ecc71; color: black; padding: 12px; font-weight: bold; display: flex; justify-content: space-between;">
+        <span>AgriMind AI</span>
+        <span onclick="toggleAgriChat()" style="cursor: pointer;">✕</span>
+    </div>
+    
+    <div id="agri-messages" style="flex: 1; padding: 15px; overflow-y: auto; color: #eee; font-size: 14px; display: flex; flex-direction: column; gap: 10px;">
+        <div style="background: rgba(46, 204, 113, 0.1); padding: 8px; border-radius: 8px; border-left: 3px solid #2ecc71;">
+            Hello! Main AgriMind AI hoon. Kuch puchiye...
+        </div>
+    </div>    
+</div>
+<script>
+const API = 'http://127.0.0.1:8000'; // Set to your Vercel backend URL in production e.g. https://agrimind-api.vercel.app
+
+// ── Mock data (used when API is unavailable) ──
+function rnd(n){ return Math.round((Math.random()-.5)*n); }
+
+function getSensors() {
+  return [
+    { icon:"🌡️", val: 28+rnd(4), unit:"°C",   label:"Temperature",  max:50,  gc:"rgba(248,113,113,0.08)", gc2:"#f87171" },
+    { icon:"💧",  val: 65+rnd(8), unit:"%",    label:"Humidity",      max:100, gc:"rgba(96,165,250,0.08)",  gc2:"#60a5fa" },
+    { icon:"🌱",  val: 42+rnd(6), unit:"%",    label:"Soil Moisture", max:100, gc:"rgba(74,222,128,0.08)",  gc2:"#4ade80" },
+    { icon:"☀️",  val: 7,         unit:"",     label:"UV Index",      max:11,  gc:"rgba(251,191,36,0.08)",  gc2:"#fbbf24" },
+    { icon:"⚗️",  val:+(6.4+(Math.random()-.5)*.4).toFixed(1), unit:"pH", label:"Soil pH", max:14, gc:"rgba(192,132,252,0.08)", gc2:"#c084fc" },
+    { icon:"🌬️", val: 14+rnd(4), unit:"km/h", label:"Wind Speed",    max:60,  gc:"rgba(45,212,191,0.08)",  gc2:"#2dd4bf" },
+    { icon:"🌧️", val: 12+rnd(3), unit:"mm",   label:"Rainfall",      max:50,  gc:"rgba(129,140,248,0.08)", gc2:"#818cf8" },
+    { icon:"📡",  val: 94+rnd(4), unit:"%",    label:"Signal",        max:100, gc:"rgba(74,222,128,0.08)",  gc2:"#4ade80" },
+  ];
+}
+
+function getNPK() {
+  return [
+    { label:"Nitrogen (N)",   icon:"🟢", val:38+rnd(3), max:80, unit:"kg/ha", color:"#4ade80", opt:"30–60 kg/ha" },
+    { label:"Phosphorus (P)", icon:"🔵", val:22+rnd(2), max:60, unit:"kg/ha", color:"#60a5fa", opt:"25–50 kg/ha" },
+    { label:"Potassium (K)",  icon:"🟡", val:45+rnd(4), max:80, unit:"kg/ha", color:"#fbbf24", opt:"35–65 kg/ha" },
+  ];
+}
+
+const FARM_ROWS = [
+  ["📍 Location","Pune, Maharashtra"],
+  ["🌦 Season","Kharif 2025"],
+  ["📐 Field Size","5.2 acres"],
+  ["🌾 Soil Type","Black Cotton"],
+  ["🌊 Water Source","Drip + Borewell"],
+  ["👨‍🌾 Farmer ID","MH-PNE-2045"],
+];
+
+const SYS_STATUS = [
+  ["IoT Sensors",true],["Weather API",true],["ML Models",true],
+  ["Alert Engine",true],["Irrigation Ctrl",true],["Market Feed",true],
+];
+
+const ALERTS_MINI = [
+  { icon:"🦟", title:"Whitefly Infestation Risk", sev:"High",   cls:"a-high" },
+  { icon:"🍄", title:"Fungal Blight Warning",      sev:"Medium", cls:"a-med"  },
+  { icon:"☀️", title:"UV Heat Stress Alert",       sev:"Medium", cls:"a-med"  },
+  { icon:"🌱", title:"Phosphorus Deficiency",      sev:"Low",    cls:"a-low"  },
+];
+
+const WEATHER = [
+  { day:"Mon", icon:"☀️",  temp:"31°C", rain:"0mm",  wind:"12" },
+  { day:"Tue", icon:"⛅",  temp:"29°C", rain:"5mm",  wind:"15" },
+  { day:"Wed", icon:"🌧️", temp:"26°C", rain:"18mm", wind:"22" },
+  { day:"Thu", icon:"⛅",  temp:"28°C", rain:"8mm",  wind:"14" },
+  { day:"Fri", icon:"☀️",  temp:"30°C", rain:"0mm",  wind:"10" },
+  { day:"Sat", icon:"☀️",  temp:"33°C", rain:"0mm",  wind:"9"  },
+  { day:"Sun", icon:"⛅",  temp:"29°C", rain:"3mm",  wind:"13" },
+];
+
+const ACTIONS = [
+  { icon:"🌾", label:"View Crop Recommendations", color:"#4ade80", href:"crops.html" },
+  { icon:"💧", label:"Open Irrigation Planner",   color:"#60a5fa", href:"irrigation.html" },
+  { icon:"⚠️", label:"Review All Risk Alerts",    color:"#f87171", href:"alerts.html" },
+  { icon:"📊", label:"Generate Yield Forecast",   color:"#fbbf24", href:"#" },
+];
+
+// ── Render functions ──
+function renderSensors() {
+  document.getElementById('sensorGrid').innerHTML = getSensors().map(s => `
+    <div class="s-card" style="--gc:${s.gc};--gc2:${s.gc2};">
+      <div class="s-icon">${s.icon}</div>
+      <div class="s-val">${s.val}<span class="s-unit">${s.unit}</span></div>
+      <div class="s-label">${s.label}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${Math.min((s.val/s.max)*100,100)}%;background:${s.gc2};"></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderNPK() {
+  document.getElementById('npkGrid').innerHTML = getNPK().map(n => `
+    <div class="npk-card">
+      <div class="npk-top">
+        <div class="npk-name">${n.icon} ${n.label}</div>
+        <div class="npk-val" style="color:${n.color};">${n.val}<span>${n.unit}</span></div>
+      </div>
+      <div class="bar-track" style="height:6px;">
+        <div class="bar-fill" style="width:${(n.val/n.max)*100}%;background:linear-gradient(90deg,${n.color}80,${n.color});"></div>
+      </div>
+      <div class="npk-range">Optimal: ${n.opt}</div>
+    </div>
+  `).join('');
+}
+
+function renderFarmDetails() {
+  document.getElementById('farmDetails').innerHTML = FARM_ROWS.map(([k,v]) =>
+    `<div class="row"><span class="row-k">${k}</span><span class="row-v">${v}</span></div>`
+  ).join('');
+}
+
+function renderSysStatus() {
+  document.getElementById('sysStatus').innerHTML = SYS_STATUS.map(([k,ok]) => `
+    <div class="row">
+      <span class="row-k">${k}</span>
+      <span class="row-v" style="color:${ok?'var(--green)':'var(--red)'};">
+        <span class="st-dot ${ok?'st-on':'st-off'}"></span>${ok?'Online':'Offline'}
+      </span>
+    </div>
+  `).join('');
+}
+
+function renderAlertsMini() {
+  document.getElementById('alertsMini').innerHTML = ALERTS_MINI.map(a => `
+    <div class="alert-mini ${a.cls}">
+      <span style="font-size:16px;">${a.icon}</span>
+      <span style="flex:1;line-height:1.4;">${a.title}</span>
+      <span class="a-badge sev-${a.sev.toLowerCase()}">${a.sev.toUpperCase()}</span>
+    </div>
+  `).join('');
+}
+
+function renderWeather() {
+  document.getElementById('weatherGrid').innerHTML = WEATHER.map(w => `
+    <div class="weather-row">
+      <span style="color:var(--muted);font-family:var(--font-mono);font-size:11px;width:34px;">${w.day}</span>
+      <span style="font-size:17px;">${w.icon}</span>
+      <span style="font-size:13px;">${w.temp}</span>
+      <span style="color:var(--blue);font-size:11px;">🌧 ${w.rain}</span>
+      <span style="color:var(--muted);font-size:11px;">💨 ${w.wind}km/h</span>
+    </div>
+  `).join('');
+}
+
+function renderActions() {
+  document.getElementById('quickActions').innerHTML = ACTIONS.map(a => `
+    <a href="${a.href}" class="qa-btn">
+      <span class="qa-icon">${a.icon}</span>
+      <span class="qa-label" style="color:${a.color};">${a.label}</span>
+      <span class="qa-arrow">›</span>
+    </a>
+  `).join('');
+}
+
+function updateTime() {
+  document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString();
+}
+
+// Try to fetch from API, fall back gracefully
+async function fetchSummary() {
+  try {
+    const r = await fetch(`${API}/api/farm-summary`);
+    if (!r.ok) return;
+    const d = await r.json();
+    document.getElementById('sum-crop').textContent = d.top_crop || 'Soybean';
+    document.getElementById('sum-irr').textContent  = d.next_irrigation || 'Tuesday';
+    document.getElementById('sum-alerts').textContent = d.active_alerts || '4';
+    document.getElementById('sum-health').textContent = d.field_health_score ? d.field_health_score.split('/')[0]+'%' : '78%';
+  } catch(e) { /* use static fallback */ }
+}
+
+function toggleAgriChat() {
+    const win = document.getElementById('agri-chat-window');
+    win.style.display = win.style.display === 'none' ? 'flex' : 'none';
+}
+
+async function sendAgriMessage() {
+    const input = document.getElementById('agri-input');
+    const msgArea = document.getElementById('agri-messages');
+    const msg = input.value.trim();
+    
+    if (!msg) return;
+
+    // User Message display
+    msgArea.innerHTML += `<div style="text-align: right; margin-bottom: 10px;"><span style="background: #333; padding: 8px 12px; border-radius: 10px; display: inline-block;">${msg}</span></div>`;
+    input.value = '';
+    msgArea.scrollTop = msgArea.scrollHeight;
+
+    try {
+        const response = await fetch('${API}/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: msg })
+        });
+        
+        const data = await response.json();
+        
+        // AI Response display
+        msgArea.innerHTML += `<div style="margin-bottom: 10px;"><span style="background: rgba(46, 204, 113, 0.1); padding: 8px 12px; border-radius: 10px; display: inline-block; border-left: 3px solid #2ecc71;">${data.response || "Sorry, error aa gaya."}</span></div>`;
+        msgArea.scrollTop = msgArea.scrollHeight;
+    } catch (err) {
+        msgArea.innerHTML += `<div style="color: red; font-size: 12px;">Server connected nahi hai.</div>`;
+    }
+}
+
+// Enter key se send karne ke liye
+document.getElementById('agri-input').addEventListener('keypress', function (e) {
+    if (e.key === 'Enter') sendAgriMessage();
+});
+
+// ── Countdown & refresh ──
+let secs = 30;
+setInterval(() => {
+  secs--;
+  document.getElementById('countdown').textContent = secs;
+  if (secs <= 0) {
+    secs = 30;
+    renderSensors();
+    renderNPK();
+    updateTime();
+  }
+}, 1000);
+
+// ── Init ──
+renderSensors();
+renderNPK();
+renderFarmDetails();
+renderSysStatus();
+renderAlertsMini();
+renderWeather();
+renderActions();
+updateTime();
+fetchSummary();
+</script>
+</body>
+</html>
