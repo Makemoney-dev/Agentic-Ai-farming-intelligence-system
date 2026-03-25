@@ -4,9 +4,15 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>AgriMind AI — Crop Insights</title>
-<link rel="stylesheet" href="/public/style.css"/>
+<link rel="stylesheet" href="style.css"/>
 </head>
 <body>
+
+<div class="float-nav">
+  <a href="index.html"     class="float-btn" style="background:linear-gradient(135deg,#166534,#15803d);">🏠 Dashboard</a>
+  <a href="irrigation.html" class="float-btn" style="background:linear-gradient(135deg,#1e3a5f,#1d4ed8);">💧 Irrigation</a>
+  <a href="alerts.html"    class="float-btn" style="background:linear-gradient(135deg,#7f1d1d,#dc2626);">⚠️ Alerts</a>
+</div>
 
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:14px;">
@@ -23,14 +29,10 @@
 </div>
 
 <nav class="sidenav">
-  <a href="/public/index.html"      class="nav-icon">🏠<span class="tooltip">Dashboard</span></a>
-  <a href="/public/crops.html"      class="nav-icon active">🌾<span class="tooltip">Crop Insights</span></a>
-  <a href="/public/irrigation.html" class="nav-icon">💧<span class="tooltip">Irrigation</span></a>
-  <a href="/public/alerts.html"     class="nav-icon">⚠️<span class="tooltip">Risk Alerts</span></a>
-  <a href="javascript:void(0)" class="nav-icon" onclick="toggleAgriChat()" title="AI Advisor">
-    <span class="tooltip">AI Advisor</span>
-    <span style="font-size: 20px;">🤖</span>
-  </a>
+  <a href="index.html"      class="nav-icon">🏠<span class="tooltip">Dashboard</span></a>
+  <a href="crops.html"      class="nav-icon active">🌾<span class="tooltip">Crop Insights</span></a>
+  <a href="irrigation.html" class="nav-icon">💧<span class="tooltip">Irrigation</span></a>
+  <a href="alerts.html"     class="nav-icon">⚠️<span class="tooltip">Risk Alerts</span></a>
 </nav>
 
 <div class="wrap">

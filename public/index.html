@@ -4,9 +4,16 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>AgriMind AI — Dashboard</title>
-<link rel="stylesheet" href="/public/style.css">
+<link rel="stylesheet" href="style.css"/>
 </head>
 <body>
+
+<!-- FLOAT NAV -->
+<div class="float-nav">
+  <a href="crops.html" class="float-btn" style="background:linear-gradient(135deg,#166534,#15803d);">🌾 Crops</a>
+  <a href="irrigation.html" class="float-btn" style="background:linear-gradient(135deg,#1e3a5f,#1d4ed8);">💧 Irrigation</a>
+  <a href="alerts.html" class="float-btn" style="background:linear-gradient(135deg,#7f1d1d,#dc2626);">⚠️ Alerts</a>
+</div>
 
 <!-- TOPBAR -->
 <div class="topbar">
@@ -26,14 +33,10 @@
 
 <!-- SIDEBAR NAV -->
 <nav class="sidenav">
-  <a href="/public/index.html" class="nav-icon active" title="">🏠<span class="tooltip">Dashboard</span></a>
-  <a href="/public/crops.html" class="nav-icon" title="">🌾<span class="tooltip">Crop Insights</span></a>
-  <a href="/public/irrigation.html" class="nav-icon" title="">💧<span class="tooltip">Irrigation</span></a>
-  <a href="/public/alerts.html" class="nav-icon" title="">⚠️<span class="tooltip">Risk Alerts</span></a>
-  <a href="javascript:void(0)" class="nav-icon" onclick="toggleAgriChat()" title="AI Advisor">
-    <span class="tooltip">AI Advisor</span>
-    <span style="font-size: 20px;">🤖</span>
-  </a>
+  <a href="index.html" class="nav-icon active" title="">🏠<span class="tooltip">Dashboard</span></a>
+  <a href="crops.html" class="nav-icon" title="">🌾<span class="tooltip">Crop Insights</span></a>
+  <a href="irrigation.html" class="nav-icon" title="">💧<span class="tooltip">Irrigation</span></a>
+  <a href="alerts.html" class="nav-icon" title="">⚠️<span class="tooltip">Risk Alerts</span></a>
 </nav>
 
 <!-- MAIN -->
@@ -110,18 +113,7 @@
     Last updated: <span id="lastUpdated">—</span> &nbsp;·&nbsp; Next refresh in <span id="countdown">30</span>s
   </div>
 </div>
-<div id="agri-chat-window" style="display: none; position: fixed; bottom: 20px; left: 85px; width: 320px; height: 500px; background: rgba(15, 15, 15, 0.98); backdrop-filter: blur(15px); border: 1px solid #2ecc71; border-radius: 15px; flex-direction: column; z-index: 9999; box-shadow: 0 10px 40px rgba(0,0,0,0.8); overflow: hidden;"> 
-    <div style="background: #2ecc71; color: black; padding: 12px; font-weight: bold; display: flex; justify-content: space-between;">
-        <span>AgriMind AI</span>
-        <span onclick="toggleAgriChat()" style="cursor: pointer;">✕</span>
-    </div>
-    
-    <div id="agri-messages" style="flex: 1; padding: 15px; overflow-y: auto; color: #eee; font-size: 14px; display: flex; flex-direction: column; gap: 10px;">
-        <div style="background: rgba(46, 204, 113, 0.1); padding: 8px; border-radius: 8px; border-left: 3px solid #2ecc71;">
-            Hello! Main AgriMind AI hoon. Kuch puchiye...
-        </div>
-    </div>    
-</div>
+
 <script>
 const API = 'http://127.0.0.1:8000'; // Set to your Vercel backend URL in production e.g. https://agrimind-api.vercel.app
 
@@ -281,45 +273,6 @@ async function fetchSummary() {
     document.getElementById('sum-health').textContent = d.field_health_score ? d.field_health_score.split('/')[0]+'%' : '78%';
   } catch(e) { /* use static fallback */ }
 }
-
-function toggleAgriChat() {
-    const win = document.getElementById('agri-chat-window');
-    win.style.display = win.style.display === 'none' ? 'flex' : 'none';
-}
-
-async function sendAgriMessage() {
-    const input = document.getElementById('agri-input');
-    const msgArea = document.getElementById('agri-messages');
-    const msg = input.value.trim();
-    
-    if (!msg) return;
-
-    // User Message display
-    msgArea.innerHTML += `<div style="text-align: right; margin-bottom: 10px;"><span style="background: #333; padding: 8px 12px; border-radius: 10px; display: inline-block;">${msg}</span></div>`;
-    input.value = '';
-    msgArea.scrollTop = msgArea.scrollHeight;
-
-    try {
-        const response = await fetch('${API}/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: msg })
-        });
-        
-        const data = await response.json();
-        
-        // AI Response display
-        msgArea.innerHTML += `<div style="margin-bottom: 10px;"><span style="background: rgba(46, 204, 113, 0.1); padding: 8px 12px; border-radius: 10px; display: inline-block; border-left: 3px solid #2ecc71;">${data.response || "Sorry, error aa gaya."}</span></div>`;
-        msgArea.scrollTop = msgArea.scrollHeight;
-    } catch (err) {
-        msgArea.innerHTML += `<div style="color: red; font-size: 12px;">Server connected nahi hai.</div>`;
-    }
-}
-
-// Enter key se send karne ke liye
-document.getElementById('agri-input').addEventListener('keypress', function (e) {
-    if (e.key === 'Enter') sendAgriMessage();
-});
 
 // ── Countdown & refresh ──
 let secs = 30;
